@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>طريق الكثبان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lalezar&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #cfe6ef;
+    --card: #fffdf7;
+    --ink: #1c2329;
+    --muted: #5b6770;
+    --line: #ddd6c4;
+    --accent: #0f7f8a;
+    --on-accent: #ffffff;
+    --danger: #d9382b;
+    --gold: #f2b632;
+    --body: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif;
+    --display: 'Lalezar', 'Tajawal', Tahoma, sans-serif;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f151a; --card: #1b232b; --ink: #eef2f4; --muted: #9aa8b2;
+      --line: #33414c; --accent: #3fb6bf; --on-accent: #0b1418;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f151a; --card: #1b232b; --ink: #eef2f4; --muted: #9aa8b2;
+    --line: #33414c; --accent: #3fb6bf; --on-accent: #0b1418;
+  }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    font-family: var(--body); font-size: 16px; line-height: 1.5;
+    display: flex; flex-direction: column;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px; }
+  .frame {
+    position: relative; overflow: hidden; border-radius: 18px;
+    background: #ecd2a0; box-shadow: 0 10px 30px rgba(0,0,0,.28);
+  }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
+  .hud { position: absolute; inset: 0 0 auto 0; display: flex; justify-content: space-between; padding: 12px 14px; pointer-events: none; }
+  .pill {
+    background: rgba(255,253,247,.9); color: #1c2329; border-radius: 12px;
+    padding: 4px 12px 2px; text-align: center; min-width: 78px;
+  }
+  .pill b { display: block; font-family: var(--display); font-weight: 400; font-size: 26px; line-height: 1.1; }
+  .pill span { font-size: 12px; color: #5b6770; }
+
+  .screen {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 16px; background: rgba(16,22,28,.52);
+  }
+  .card {
+    background: var(--card); color: var(--ink); border-radius: 20px;
+    padding: 22px 20px; width: 100%; max-width: 320px; text-align: center;
+    box-shadow: 0 12px 34px rgba(0,0,0,.3);
+  }
+  .card h1 { font-family: var(--display); font-weight: 400; font-size: 40px; line-height: 1.1; margin: 0 0 6px; }
+  .card h2 { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.15; margin: 0 0 6px; }
+  .card p { margin: 0 0 14px; color: var(--muted); }
+  .stripe { height: 10px; border-radius: 5px; margin: 0 auto 16px; width: 120px;
+    background: repeating-linear-gradient(90deg, var(--danger) 0 14px, #fff3cf 14px 28px); }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; margin: 4px 0 16px; border-block: 1px solid var(--line); }
+  .stats > div { padding: 10px 4px 8px; }
+  .stats > div + div { border-inline-start: 1px solid var(--line); }
+  .stats b { display: block; font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.1; }
+  .stats small { color: var(--muted); font-size: 13px; }
+
+  .btn {
+    font: inherit; font-weight: 700; font-size: 16px; width: 100%; border: 0; cursor: pointer;
+    border-radius: 14px; padding: 12px 16px; margin-top: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: var(--danger); color: #fff;
+  }
+  .btn.ad { background: var(--accent); color: var(--on-accent); }
+  .btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+  .btn:active { transform: translateY(1px); }
+  .chip { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: rgba(255,255,255,.28); }
+  .btn.ad .chip { background: color-mix(in srgb, var(--on-accent) 22%, transparent); }
+  .record { color: var(--danger); font-weight: 700; margin: -8px 0 12px; }
+  .hint { font-size: 13px; color: var(--muted); margin: 12px 0 0; }
+
+  .banner {
+    flex: none; height: 50px; width: min(320px, calc(100% - 16px)); margin: 0 auto 6px;
+    border: 1.5px dashed var(--muted); border-radius: 8px; color: var(--muted);
+    display: flex; align-items: center; justify-content: center; font-size: 13px;
+  }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 20; background: rgba(10,14,18,.78);
+    display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+  }
+  .modal .card { max-width: 440px; max-height: 100%; overflow: auto; text-align: start; }
+  .adbox {
+    height: 200px; border-radius: 12px; margin: 10px 0 12px; display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 12px; color: var(--muted);
+    background: repeating-linear-gradient(135deg, transparent 0 14px, color-mix(in srgb, var(--line) 60%, transparent) 14px 28px);
+    border: 1.5px dashed var(--line);
+  }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 10px; border-radius: 999px; background: var(--gold); color: #3a2a00; }
+
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .shop-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .shop-head h2 { margin: 0; }
+  .wallet { display: flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 28px; line-height: 1; }
+  .coin { display: inline-block; width: 15px; height: 15px; border-radius: 50%; background: var(--gold); border: 2.5px solid #b57d12; flex: none; }
+  .price { display: inline-flex; align-items: center; gap: 5px; }
+  .garage { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 12px 0; }
+  .slot { border: 1.5px solid var(--line); border-radius: 14px; padding: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+  .slot.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .slot canvas { width: 88px; height: 112px; border-radius: 10px;
+    background: linear-gradient(90deg, #ecd2a0 0 8%, #3b3f46 8% 92%, #ecd2a0 92%); }
+  .slot h3 { font-family: var(--display); font-weight: 400; font-size: 21px; line-height: 1.2; margin: 2px 0 0; }
+  .slot p { font-size: 13px; line-height: 1.4; color: var(--muted); margin: 0; min-height: 54px; }
+  .slot .btn { margin-top: 2px; padding: 8px 10px; font-size: 14px; }
+  .slot.sel .btn:disabled { opacity: 1; color: var(--accent); border-color: var(--accent); }
+  .need { font-size: 12px; color: var(--muted); }
+  .modal .card:focus { outline: none; }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+  <div class="frame" id="frame">
+    <canvas id="cv" aria-label="لعبة سيارات، اضغط يمين أو يسار الشاشة لتغيير المسار"></canvas>
+
+    <div class="hud" aria-live="off">
+      <div class="pill"><b id="hudScore">0</b><span>متر</span></div>
+      <div class="pill"><b id="hudCoins">0</b><span>عملة</span></div>
+    </div>
+
+    <div class="screen" id="scMenu">
+      <div class="card">
+        <div class="stripe"></div>
+        <h1>طريق الكثبان</h1>
+        <p>تفادَ السيارات، اجمع العملات، وابقَ على الطريق أطول مسافة.</p>
+        <div class="stats">
+          <div><b id="mWallet">0</b><small>رصيد العملات</small></div>
+          <div><b id="mBest">0</b><small>أفضل مسافة</small></div>
+        </div>
+        <button class="btn" id="btnStart">ابدأ اللعب</button>
+        <button class="btn ghost" id="btnShop">المتجر</button>
+        <p class="hint">اضغط يمين الشاشة أو يسارها لتغيير المسار، أو استخدم مفتاحَي الأسهم.</p>
+      </div>
+    </div>
+
+    <div class="screen" id="scOver" hidden>
+      <div class="card">
+        <h2>تحطمت السيارة</h2>
+        <div class="stats">
+          <div><b id="oScore">0</b><small>المسافة بالمتر</small></div>
+          <div><b id="oCoins">+0</b><small>عملات هذه الجولة</small></div>
+        </div>
+        <div class="record" id="oNew" hidden>رقم قياسي جديد</div>
+        <button class="btn ad" id="btnContinue"><span>أكمل من مكانك</span><span class="chip">إعلان</span></button>
+        <button class="btn ad" id="btnDouble"><span id="doubleLabel">ضاعف عملاتك</span><span class="chip">إعلان</span></button>
+        <button class="btn" id="btnAgain">العب مجدداً</button>
+        <button class="btn ghost" id="btnMenu">القائمة</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="banner" id="banner">مساحة البانر الإعلاني 320×50</div>
+
+<div class="modal" id="shop" hidden role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+  <div class="card" tabindex="-1">
+    <div class="shop-head">
+      <h2 id="shopTitle">المتجر</h2>
+      <div class="wallet" aria-label="رصيد العملات"><i class="coin"></i><span id="shopWallet">0</span></div>
+    </div>
+    <button class="btn ad" id="btnFree"><span id="freeLabel">احصل على 50 عملة</span><span class="chip">إعلان</span></button>
+    <div class="garage" id="garage"></div>
+    <button class="btn ghost" id="shopClose">إغلاق</button>
+  </div>
+</div>
+
+<!-- Simulated ad (replace with a real SDK, see Ads object in the script) -->
+<div class="modal" id="ad" hidden role="dialog" aria-modal="true" aria-labelledby="adKind">
+  <div class="card">
+    <span class="tag">إعلان تجريبي</span>
+    <h2 id="adKind" style="margin-top:8px">إعلان</h2>
+    <div class="adbox">هنا يظهر الإعلان الحقيقي من شبكة الإعلانات بعد ربط الـ SDK.</div>
+    <p id="adWait" style="margin:0 0 6px;color:var(--muted)">يمكنك المتابعة بعد <span class="num" id="adCount">5</span> ثوانٍ</p>
+    <button class="btn ad" id="adClose" hidden>إغلاق</button>
+    <button class="btn ghost" id="adEarly" hidden>إغلاق بدون مكافأة</button>
+  </div>
+</div>
+
+
+<script>
+(() => {
+  'use strict';
+  const $ = s => document.querySelector(s);
+
+  /* =====================================================================
+     ADS SETUP  (edit only this block)
+     - publisherId: your AdSense property code, e.g. 'ca-pub-1234567890123456'.
+       Leave it empty to run with simulated ads (no real requests).
+     - testMode:    true = Google test ads. Set to false before you go live.
+     - bannerSlot:  optional AdSense display ad unit ID (digits) for the 320x50
+       banner. Leave empty to hide the banner.
+     Requirements: an AdSense account with H5 Games Ads (Ad Placement API)
+     enabled for your domain, and the game served over http(s), not file://.
+     ===================================================================== */
+  const ADS_CONFIG = {
+    publisherId: '',
+    testMode: true,
+    bannerSlot: ''
+  };
+
+  /* ---------- Ad pacing ---------- */
+  const AD_CONFIG = {
+    interstitialEvery: 3,      // show an interstitial after N finished rounds
+    cooldownMs: 30000,         // minimum time between two interstitials
+    interstitialSeconds: 3,
+    rewardedSeconds: 5,
+    freeCoins: 50              // coins granted for watching a rewarded ad in the shop
+  };
+
+  /* ---------- Storage (safe) ---------- */
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  let best = store.get('best', 0);
+  let wallet = store.get('wallet', 0);
+
+  /* ---------- Constants ---------- */
+  const W = 360, H = 640, LANES = 3, LANE_W = 84;
+  const ROAD_X = (W - LANES * LANE_W) / 2;
+  const CAR_W = 42, CAR_H = 76, PY = H - 130;
+  const ENEMY_COLORS = ['#2f6db5', '#e6a91f', '#4f8a45', '#7b5aa6', '#eeeeee', '#33373d'];
+  const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const laneX = i => ROAD_X + LANE_W * (i + 0.5);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  /* ---------- Car catalog ---------- */
+  const DIMS = { sedan: [42, 76], classic: [40, 68], suv: [46, 80], pickup: [46, 86], muscle: [46, 80], rally: [42, 74], super: [46, 78] };
+  const ENEMY_KINDS = ['sedan', 'sedan', 'classic', 'suv', 'pickup'];
+  const CAR_DEFAULTS = { coinMul: 1, turn: 14, ramp: 6, magnet: 0, shield: 0 };
+  const CARS = [
+    { id: 'base',    kind: 'sedan',   name: 'الأساسية',      price: 0,    body: '#d9382b', stripes: true, desc: 'سيارة البداية المتوازنة.' },
+    { id: 'classic', kind: 'classic', name: 'الكلاسيكية',    price: 100,  body: '#5fb3a1', coinMul: 1.15, desc: 'عملات أكثر بنسبة 15٪ في كل جولة.' },
+    { id: 'pickup',  kind: 'pickup',  name: 'البيك أب',      price: 250,  body: '#b5532c', magnet: 1, desc: 'تجذب العملات من المسارات المجاورة.' },
+    { id: 'suv',     kind: 'suv',     name: 'الدفع الرباعي', price: 400,  body: '#3e6b52', shield: 1, desc: 'تتحمل تصادماً واحداً في كل جولة.' },
+    { id: 'muscle',  kind: 'muscle',  name: 'الماسل',        price: 650,  body: '#8c1c2e', turn: 24, desc: 'تغيّر المسار بسرعة أكبر.' },
+    { id: 'rally',   kind: 'rally',   name: 'الرالي',        price: 1000, body: '#1d4fa3', ramp: 4, desc: 'تزداد سرعتها ببطء فتسهل السيطرة عليها.' },
+    { id: 'super',   kind: 'super',   name: 'السوبر',        price: 1600, body: '#ff8a1f', coinMul: 1.3, turn: 26, desc: 'عملات أكثر بنسبة 30٪ وتحكم سريع.' }
+  ].map(c => Object.assign({}, CAR_DEFAULTS, c));
+  const carById = id => CARS.find(c => c.id === id) || CARS[0];
+  let owned = store.get('owned', ['base']);
+  if (!Array.isArray(owned) || !owned.includes('base')) owned = ['base'];
+  let selected = store.get('car', 'base');
+  if (!owned.includes(selected)) selected = 'base';
+
+  const cv = $('#cv'), ctx = cv.getContext('2d'), frame = $('#frame');
+  let scale = 1, state = 'menu', g, roundsSinceAd = 0;
+
+  /* ---------- Ads (Google Ad Placement API / H5 Games Ads) ----------
+     mode 'sim'  : simulated ads (publisherId empty or invalid)
+     mode 'live' : real SDK. If the SDK is blocked or fails to load, ads are
+                   skipped and reward buttons stay hidden (the game never hangs). */
+  const validId = /^ca-pub-\d{8,}$/.test(ADS_CONFIG.publisherId);
+  const Ads = {
+    sim: !validId,
+    live: false,             // true once the SDK script has loaded
+    rewardFn: null,          // showAdFn from beforeReward (rewarded ad ready)
+    rewardCb: null,
+    prevState: 'menu',
+    lastInterstitial: 0,
+    shown: { interstitial: 0, rewarded: 0 },
+
+    init() {
+      if (this.sim) return;
+      window.adsbygoogle = window.adsbygoogle || [];
+      window.adBreak = window.adConfig = function (o) { window.adsbygoogle.push(o); };
+      const sc = document.createElement('script');
+      sc.async = true; sc.crossOrigin = 'anonymous';
+      sc.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(ADS_CONFIG.publisherId);
+      if (ADS_CONFIG.testMode) sc.setAttribute('data-adbreak-test', 'on');
+      sc.onload = () => { Ads.live = true; };
+      sc.onerror = () => { Ads.live = false; };
+      document.head.appendChild(sc);
+      // The game has no sound. If you add sound, call adConfig({ sound: 'on' | 'off' }) when the player toggles it.
+      window.adConfig({ sound: 'off', preloadAdBreaks: 'on' });
+    },
+
+    canReward() { return this.sim ? true : !!this.rewardFn; },
+
+    // Interstitial at a natural break (between rounds). Always calls next().
+    showInterstitial(next) {
+      if (this.sim) {
+        fakeAd('interstitial', AD_CONFIG.interstitialSeconds, () => {
+          Ads.lastInterstitial = Date.now(); Ads.shown.interstitial++; roundsSinceAd = 0; next();
+        });
+        return;
+      }
+      if (!this.live) { next(); return; }
+      let started = false, finished = false;
+      const go = () => { if (!finished) { finished = true; next(); } };
+      window.adBreak({
+        type: 'next', name: 'next-round',
+        beforeAd: () => { started = true; Ads.prevState = state; state = 'ad'; },   // pause synchronously
+        afterAd: () => { if (state === 'ad') state = Ads.prevState; },
+        adBreakDone: info => {
+          const st = info && info.breakStatus;
+          if (st === 'viewed' || st === 'dismissed') { Ads.lastInterstitial = Date.now(); Ads.shown.interstitial++; roundsSinceAd = 0; }
+          go();
+        }
+      });
+      setTimeout(() => { if (!started) go(); }, 4000);   // no response from the SDK: never block the player
+    },
+
+    // Ask the SDK whether a rewarded ad is available. Buttons appear only if it is.
+    // active(): still on the screen that offers the reward. refresh(): re-draw that screen's buttons.
+    prepareReward(name, active, refresh) {
+      if (this.sim) { if (refresh) refresh(); return; }
+      this.rewardFn = null; if (refresh) refresh();
+      if (!this.live) return;
+      let shownAd = false;
+      window.adBreak({
+        type: 'reward', name,
+        beforeReward: showAdFn => { Ads.rewardFn = showAdFn; if (refresh) refresh(); },
+        beforeAd: () => { shownAd = true; Ads.prevState = state; state = 'ad'; },
+        afterAd: () => { if (state === 'ad') state = Ads.prevState; },
+        adViewed: () => {
+          Ads.shown.rewarded++;
+          const cb = Ads.rewardCb; Ads.rewardCb = null; if (cb) cb(true);
+        },
+        adDismissed: () => {
+          const cb = Ads.rewardCb; Ads.rewardCb = null; if (cb) cb(false);
+        },
+        adBreakDone: () => {
+          if (shownAd && active()) Ads.prepareReward(name, active, refresh);   // offer another reward
+        }
+      });
+    },
+
+    // Must be called directly from a button click.
+    showRewarded(onResult) {
+      if (this.sim) {
+        fakeAd('rewarded', AD_CONFIG.rewardedSeconds, ok => { if (ok) Ads.shown.rewarded++; onResult(ok); });
+        return;
+      }
+      const fn = this.rewardFn;
+      if (!fn) { onResult(false); return; }
+      this.rewardFn = null; this.rewardCb = onResult;
+      fn();
+    }
+  };
+
+  // Simulated ad overlay (used only in 'sim' mode)
+  function fakeAd(kind, seconds, cb) {
+    const el = $('#ad'), cnt = $('#adCount'), close = $('#adClose'), early = $('#adEarly'), wait = $('#adWait');
+    const prev = state; state = 'ad';
+    $('#adKind').textContent = kind === 'rewarded' ? 'إعلان مكافأة' : 'إعلان بيني';
+    let left = seconds;
+    cnt.textContent = left; wait.hidden = false; close.hidden = true; early.hidden = kind !== 'rewarded';
+    close.textContent = kind === 'rewarded' ? 'استلم المكافأة' : 'إغلاق';
+    el.hidden = false;
+    const iv = setInterval(() => {
+      left--; cnt.textContent = Math.max(left, 0);
+      if (left <= 0) { clearInterval(iv); wait.hidden = true; close.hidden = false; early.hidden = true; close.focus(); }
+    }, 1000);
+    const finish = ok => { clearInterval(iv); el.hidden = true; close.onclick = early.onclick = null; state = prev; cb(ok); };
+    close.onclick = () => finish(true);
+    early.onclick = () => finish(false);
+  }
+
+  function setupBanner() {
+    const el = $('#banner');
+    if (Ads.sim) return;                                   // keep the placeholder in simulation mode
+    if (!ADS_CONFIG.bannerSlot) { el.hidden = true; return; }
+    el.textContent = ''; el.style.border = '0';
+    const ins = document.createElement('ins');
+    ins.className = 'adsbygoogle'; ins.style.cssText = 'display:inline-block;width:320px;height:50px';
+    ins.setAttribute('data-ad-client', ADS_CONFIG.publisherId);
+    ins.setAttribute('data-ad-slot', ADS_CONFIG.bannerSlot);
+    el.append(ins);
+    (window.adsbygoogle = window.adsbygoogle || []).push({});
+  }
+
+  /* ---------- Run state ---------- */
+  function makeProp(y) {
+    const left = Math.random() < 0.5;
+    return { y, x: left ? rand(8, ROAD_X - 30) : rand(W - ROAD_X + 14, W - 26), k: Math.random() < 0.55 ? 'cactus' : 'rock', s: rand(0.8, 1.2) };
+  }
+  function newRun() {
+    g = { speed: 240, dist: 0, coins: 0, coinsRaw: 0, car: carById(selected), shield: carById(selected).shield, lane: 1, px: laneX(1), tx: laneX(1), rot: 0,
+          enemies: [], pickups: [], props: [], parts: [], spawnT: 1.2, t: 0, shake: 0, flash: 0,
+          invuln: 0, dead: false, deadT: 0, continued: false, banked: 0, counted: false, doubled: false, hudS: -1, hudC: -1 };
+    for (let i = 0; i < 14; i++) g.props.push(makeProp(rand(-40, H)));
+  }
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => { s.hidden = s.id !== id; });
+  }
+  function refreshStats() {
+    $('#mWallet').textContent = wallet; $('#mBest').textContent = best;
+  }
+
+  function startGame() {
+    newRun(); state = 'play'; showScreen(null); hud();
+  }
+  function toMenu() { newRun(); state = 'menu'; refreshStats(); showScreen('scMenu'); hud(); }
+
+  function moveLane(d) {
+    if (state !== 'play' || g.dead) return;
+    g.lane = clamp(g.lane + d, 0, LANES - 1); g.tx = laneX(g.lane);
+  }
+
+  function spawnRow() {
+    const diff = clamp((g.speed - 240) / 380, 0, 1);
+    const free = (Math.random() * LANES) | 0;
+    const blocked = [0, 1, 2].filter(l => l !== free);
+    const list = Math.random() < 0.25 + 0.5 * diff ? blocked : [blocked[Math.random() < 0.5 ? 0 : 1]];
+    const v = rand(60, 110);
+    list.forEach(l => g.enemies.push({ x: laneX(l), y: -CAR_H, v, c: ENEMY_COLORS[(Math.random() * ENEMY_COLORS.length) | 0], k: ENEMY_KINDS[(Math.random() * ENEMY_KINDS.length) | 0] }));
+    if (Math.random() < 0.65) for (let i = 0; i < 3; i++) g.pickups.push({ x: laneX(free), y: -40 - i * 52 });
+    g.spawnT = rand(1.0 - 0.3 * diff, 1.5 - 0.5 * diff);
+  }
+
+  function burst(x, y, n, colors, force) {
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, Math.PI * 2), s = rand(30, force);
+      g.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: rand(0.35, 0.9), max: 0.9, c: colors[(Math.random() * colors.length) | 0], r: rand(2, 5) });
+    }
+  }
+
+  function crash() {
+    g.dead = true; g.deadT = 0.9; g.shake = 14; g.flash = 1;
+    burst(g.px, PY, 28, ['#ffd166', '#ff8c42', '#d9382b', '#555'], 220);
+  }
+
+  function advance(dt) {
+    g.dist += g.speed * dt;
+    g.props.forEach(p => { p.y += g.speed * dt; if (p.y > H + 30) Object.assign(p, makeProp(-rand(30, 160))); });
+    g.parts.forEach(p => { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; });
+    g.parts = g.parts.filter(p => p.life > 0);
+    g.shake *= Math.pow(0.02, dt); g.flash = Math.max(0, g.flash - dt * 2.5);
+  }
+
+  function updatePlay(dt) {
+    g.t += dt;
+    if (g.dead) {
+      g.speed = Math.max(0, g.speed - 700 * dt); g.rot = Math.min(1.1, g.rot + 3 * dt); g.deadT -= dt;
+    } else {
+      g.speed = Math.min(620, g.speed + g.car.ramp * dt);
+    }
+    advance(dt);
+    g.px += (g.tx - g.px) * Math.min(1, dt * g.car.turn);
+    if (g.invuln > 0) g.invuln -= dt;
+
+    if (!g.dead) {
+      g.spawnT -= dt; if (g.spawnT <= 0) spawnRow();
+    }
+    g.enemies.forEach(e => { e.y += (g.speed - e.v) * dt; });
+    g.enemies = g.enemies.filter(e => e.y < H + 120);
+    g.pickups.forEach(p => { p.y += g.speed * dt; });
+
+    if (!g.dead) {
+      if (g.car.magnet) {
+        g.pickups.forEach(p => {
+          const dx = g.px - p.x, dy = PY - p.y;
+          if (Math.abs(dx) < 100 && Math.abs(dy) < 140) p.x += dx * Math.min(1, dt * 7);
+        });
+      }
+      g.pickups = g.pickups.filter(p => {
+        if (Math.abs(p.x - g.px) < 28 && Math.abs(p.y - PY) < 46) {
+          g.coinsRaw += g.car.coinMul; g.coins = Math.floor(g.coinsRaw);
+          burst(p.x, p.y, 6, ['#f2b632', '#ffe08a'], 90); return false;
+        }
+        return p.y < H + 30;
+      });
+      if (g.invuln <= 0) {
+        for (const e of g.enemies) {
+          if (Math.abs(e.x - g.px) < 36 && Math.abs(e.y - PY) < 62) {
+            if (g.shield > 0) {
+              g.shield = 0; g.invuln = 1.5; g.shake = 9;
+              burst(e.x, e.y, 16, ['#8fe3ff', '#ffffff', '#ffd166'], 200);
+              g.enemies = g.enemies.filter(x => x !== e);
+            } else crash();
+            break;
+          }
+        }
+      }
+    }
+    hud();
+    if (g.dead && g.deadT <= 0 && state === 'play') endRun();
+  }
+
+  function hud() {
+    const s = Math.floor(g.dist / 10);
+    if (s !== g.hudS) { g.hudS = s; $('#hudScore').textContent = s; }
+    if (g.coins !== g.hudC) { g.hudC = g.coins; $('#hudCoins').textContent = g.coins; }
+  }
+
+  function endRun() {
+    state = 'over';
+    const score = Math.floor(g.dist / 10);
+    wallet += g.coins - g.banked; g.banked = g.coins; store.set('wallet', wallet);
+    if (!g.counted) { g.counted = true; roundsSinceAd++; }   // one finished round (a revive does not count twice)
+    const record = score > best;
+    if (record) { best = score; store.set('best', best); }
+    $('#oScore').textContent = score;
+    $('#oCoins').textContent = '+' + g.coins;
+    $('#oNew').hidden = !record;
+    $('#doubleLabel').textContent = 'ضاعف عملاتك (+' + g.coins + ')';
+    refreshStats();
+    showScreen('scOver');
+    refreshOverButtons();
+    Ads.prepareReward('game-over', () => state === 'over', refreshOverButtons);
+  }
+
+  function refreshOverButtons() {
+    if (state !== 'over' && state !== 'ad') return;
+    const can = Ads.canReward();
+    $('#btnContinue').hidden = g.continued || !can;
+    $('#btnDouble').hidden = g.coins === 0 || g.doubled || !can;
+  }
+
+  function revive() {
+    g.dead = false; g.continued = true; g.invuln = 2.5; g.rot = 0; g.speed = 240;
+    g.enemies = []; g.spawnT = 1.2; state = 'play'; showScreen(null);
+  }
+
+  function maybeInterstitial(next) {
+    const due = roundsSinceAd >= AD_CONFIG.interstitialEvery && Date.now() - Ads.lastInterstitial > AD_CONFIG.cooldownMs;
+    if (due) Ads.showInterstitial(next); else next();
+  }
+
+  /* ---------- Drawing ---------- */
+  function rr(x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  function rrc(c, x, y, w, h, r) {
+    c.beginPath(); c.moveTo(x + r, y);
+    c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+  }
+
+  // Draws a car (front pointing up) on any 2D context; m = { kind, body, stripes }
+  function drawCarModel(c, x, y, angle, alpha, m) {
+    const rr = (a, b, w2, h2, r) => rrc(c, a, b, w2, h2, r);
+    const ell = (a, b, rx, ry) => { c.beginPath(); c.ellipse(a, b, rx, ry, 0, 0, 7); c.fill(); };
+    const k = m.kind, [w, h] = DIMS[k], hw = w / 2, hh = h / 2;
+    const glass = '#2b3a4a', roof = 'rgba(255,255,255,.16)';
+    c.save(); c.translate(x, y); c.rotate(angle); c.globalAlpha = alpha;
+
+    c.fillStyle = 'rgba(0,0,0,.25)'; rr(-hw + 3, -hh + 6, w, h, 10); c.fill();
+    c.fillStyle = '#15171a';
+    const tw = k === 'super' ? 8 : 6, ty1 = -hh + 10, ty2 = hh - (k === 'pickup' ? 24 : 26);
+    [[-hw - 3, ty1], [hw + 3 - tw, ty1], [-hw - 3, ty2], [hw + 3 - tw, ty2]].forEach(([a, b]) => { rr(a, b, tw, 17, 2); c.fill(); });
+
+    c.fillStyle = m.body;
+    if (k === 'super') {
+      c.beginPath(); c.moveTo(-9, -hh); c.lineTo(9, -hh);
+      c.quadraticCurveTo(hw, -hh + 14, hw, -hh + 34); c.lineTo(hw, hh - 8);
+      c.quadraticCurveTo(hw, hh, hw - 8, hh); c.lineTo(-hw + 8, hh);
+      c.quadraticCurveTo(-hw, hh, -hw, hh - 8); c.lineTo(-hw, -hh + 34);
+      c.quadraticCurveTo(-hw, -hh + 14, -9, -hh); c.closePath(); c.fill();
+    } else if (k === 'classic') {
+      rr(-hw, -hh, w, h, 18); c.fill(); ell(-hw + 5, -hh + 20, 8, 16); ell(hw - 5, -hh + 20, 8, 16);
+    } else if (k === 'suv') { rr(-hw, -hh, w, h, 8); c.fill(); }
+    else if (k === 'pickup') { rr(-hw, -hh, w, h, 7); c.fill(); }
+    else { rr(-hw, -hh, w, h, 11); c.fill(); }
+
+    if (m.stripes) { c.fillStyle = '#fff3cf'; c.fillRect(-6, -hh + 2, 4, h - 4); c.fillRect(2, -hh + 2, 4, h - 4); }
+
+    if (k === 'sedan') {
+      c.fillStyle = glass; rr(-14, -hh + 17, 28, 15, 4); c.fill();
+      c.fillStyle = roof; rr(-15, -hh + 34, 30, 19, 4); c.fill();
+      c.fillStyle = glass; rr(-13, -hh + 56, 26, 8, 3); c.fill();
+    } else if (k === 'classic') {
+      c.fillStyle = glass; rr(-13, -hh + 22, 26, 11, 6); c.fill();
+      c.fillStyle = roof; ell(0, 2, 15, 15);
+      c.fillStyle = glass; rr(-11, hh - 22, 22, 8, 4); c.fill();
+      c.fillStyle = '#fff6c8'; ell(-hw + 5, -hh + 6, 3.5, 3.5); ell(hw - 5, -hh + 6, 3.5, 3.5);
+    } else if (k === 'suv') {
+      c.fillStyle = glass; rr(-16, -hh + 16, 32, 16, 4); c.fill();
+      c.fillStyle = roof; rr(-17, -hh + 33, 34, 28, 4); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.4)';
+      c.fillRect(-hw + 5, -hh + 35, 2, 24); c.fillRect(hw - 7, -hh + 35, 2, 24);
+      c.fillRect(-hw + 5, -hh + 40, w - 10, 2); c.fillRect(-hw + 5, -hh + 52, w - 10, 2);
+      c.fillStyle = glass; rr(-15, hh - 15, 30, 8, 3); c.fill();
+    } else if (k === 'pickup') {
+      c.fillStyle = glass; rr(-16, -hh + 18, 32, 12, 4); c.fill();
+      c.fillStyle = roof; rr(-16, -hh + 31, 32, 14, 3); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.4)'; rr(-hw + 4, 6, w - 8, hh - 10, 3); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.14)';
+      for (let i = 0; i < 4; i++) c.fillRect(-hw + 5, 10 + i * 7, w - 10, 1.5);
+    } else if (k === 'muscle') {
+      c.fillStyle = '#f4efe2'; c.fillRect(-9, -hh + 1, 6, h - 2); c.fillRect(3, -hh + 1, 6, h - 2);
+      c.fillStyle = 'rgba(0,0,0,.55)'; rr(-6, -hh + 12, 12, 14, 3); c.fill();
+      c.fillStyle = glass; rr(-14, -hh + 32, 28, 12, 4); c.fill();
+      c.fillStyle = roof; rr(-15, -hh + 44, 30, 13, 4); c.fill();
+      c.fillStyle = glass; rr(-13, -hh + 58, 26, 8, 3); c.fill();
+      c.fillStyle = '#15171a'; rr(-16, hh - 7, 32, 4, 1); c.fill();
+    } else if (k === 'rally') {
+      c.fillStyle = '#f4f4f4'; rr(-hw + 6, -hh + 3, w - 12, 22, 6); c.fill();
+      c.fillStyle = glass; rr(-14, -hh + 26, 28, 12, 4); c.fill();
+      c.fillStyle = roof; rr(-15, -hh + 38, 30, 16, 4); c.fill();
+      c.fillStyle = 'rgba(0,0,0,.55)'; rr(-5, -hh + 40, 10, 6, 2); c.fill();
+      c.fillStyle = '#f4f4f4'; ell(0, -hh + 51, 6, 6);
+      c.fillStyle = '#1c2329'; c.font = 'bold 9px sans-serif'; c.textAlign = 'center'; c.fillText('7', 0, -hh + 54);
+      c.fillStyle = glass; rr(-12, -hh + 57, 24, 7, 3); c.fill();
+      c.fillStyle = '#15171a'; c.fillRect(-hw - 3, hh - 9, w + 6, 5); c.fillRect(-hw + 6, hh - 5, 3, 4); c.fillRect(hw - 9, hh - 5, 3, 4);
+    } else if (k === 'super') {
+      c.fillStyle = 'rgba(0,0,0,.5)'; rr(-hw + 1, -hh + 44, 5, 12, 2); c.fill(); rr(hw - 6, -hh + 44, 5, 12, 2); c.fill();
+      c.fillStyle = glass; rr(-12, -hh + 26, 24, 28, 9); c.fill();
+      c.fillStyle = roof; rr(-7, -hh + 33, 14, 15, 5); c.fill();
+      c.fillStyle = '#15171a'; c.fillRect(-13, -hh - 1, 26, 3); c.fillRect(-hw + 2, hh - 10, w - 4, 4);
+    }
+
+    if (k === 'super') {
+      c.fillStyle = '#fff6c8'; c.fillRect(-hw + 8, -hh + 8, 8, 2.5); c.fillRect(hw - 16, -hh + 8, 8, 2.5);
+      c.fillStyle = '#ff5a4a'; c.fillRect(-14, hh - 5, 28, 2.5);
+    } else {
+      if (k !== 'classic') { c.fillStyle = '#fff6c8'; c.fillRect(-hw + 4, -hh + 2, 9, 4); c.fillRect(hw - 13, -hh + 2, 9, 4); }
+      c.fillStyle = '#ff5a4a'; c.fillRect(-hw + 4, hh - 5, 8, 3); c.fillRect(hw - 12, hh - 5, 8, 3);
+    }
+    c.restore();
+  }
+
+  function drawProp(p) {
+    ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.s, p.s);
+    if (p.k === 'cactus') {
+      ctx.fillStyle = 'rgba(0,0,0,.14)'; ctx.fillRect(-2, 26, 16, 5);
+      ctx.fillStyle = '#4c8a4a'; rr(0, 0, 9, 30, 4); ctx.fill();
+      rr(-8, 8, 6, 12, 3); ctx.fill(); ctx.fillRect(-8, 15, 9, 5);
+      rr(9, 4, 6, 12, 3); ctx.fill(); ctx.fillRect(4, 11, 8, 5);
+    } else {
+      ctx.fillStyle = 'rgba(0,0,0,.14)'; ctx.beginPath(); ctx.ellipse(8, 14, 13, 6, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#a58b6b'; ctx.beginPath(); ctx.ellipse(6, 8, 12, 8, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#c2a985'; ctx.beginPath(); ctx.ellipse(4, 5, 6, 4, 0, 0, 7); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.save();
+    if (g.shake > 0.3) ctx.translate(rand(-1, 1) * g.shake, rand(-1, 1) * g.shake);
+
+    ctx.fillStyle = '#ecd2a0'; ctx.fillRect(-20, -20, W + 40, H + 40);
+    ctx.fillStyle = 'rgba(196,150,86,.24)';
+    const base = g.dist % 90;
+    for (let i = -1; i < 8; i++) {
+      const y = i * 90 + base;
+      rr(4, y, ROAD_X - 18, 10, 5); ctx.fill();
+      rr(W - ROAD_X + 14, y + 45, ROAD_X - 18, 10, 5); ctx.fill();
+    }
+    g.props.forEach(drawProp);
+
+    ctx.fillStyle = '#3b3f46'; ctx.fillRect(ROAD_X, -10, LANES * LANE_W, H + 20);
+    const cb = g.dist % 48;
+    for (let y = -48; y < H + 48; y += 24) {
+      ctx.fillStyle = ((y / 24) & 1) === 0 ? '#d9382b' : '#fff3cf';
+      ctx.fillRect(ROAD_X - 8, y + cb, 8, 24); ctx.fillRect(W - ROAD_X, y + cb, 8, 24);
+    }
+    ctx.fillStyle = 'rgba(255,243,207,.9)';
+    ctx.fillRect(ROAD_X + 4, -10, 3, H + 20); ctx.fillRect(W - ROAD_X - 7, -10, 3, H + 20);
+    const d = g.dist % 66;
+    for (let l = 1; l < LANES; l++) {
+      const x = ROAD_X + LANE_W * l - 1.5;
+      for (let y = -66; y < H; y += 66) ctx.fillRect(x, y + d, 3, 36);
+    }
+
+    g.pickups.forEach(p => {
+      ctx.fillStyle = '#f2b632'; ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#b57d12'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#ffe08a'; ctx.fillRect(p.x - 1.5, p.y - 5, 3, 10);
+    });
+    g.enemies.forEach(e => drawCarModel(ctx, e.x, e.y, 0, 1, { kind: e.k, body: e.c }));
+
+    const tilt = clamp((g.tx - g.px) * 0.006, -0.25, 0.25);
+    const blink = g.invuln > 0 && Math.floor(g.t * 12) % 2 === 0;
+    drawCarModel(ctx, g.px, PY, tilt + g.rot, blink ? 0.4 : 1, g.car);
+    if (state === 'play' && g.shield > 0 && !g.dead) {
+      ctx.strokeStyle = 'rgba(120,220,255,' + (0.55 + 0.3 * Math.sin(g.t * 6)) + ')'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(g.px, PY, 34, 56, 0, 0, 7); ctx.stroke();
+    }
+
+    g.parts.forEach(p => {
+      ctx.globalAlpha = clamp(p.life / p.max, 0, 1); ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 7); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    if (g.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,' + (g.flash * 0.5) + ')'; ctx.fillRect(-20, -20, W + 40, H + 40); }
+    ctx.restore();
+  }
+
+  /* ---------- Loop ---------- */
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (state === 'play') updatePlay(dt);
+    else {
+      if (state === 'menu') g.speed = reduceMotion ? 0 : 110;
+      advance(dt);
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- Layout ---------- */
+  function resize() {
+    const st = $('#stage'), cs = getComputedStyle(st);
+    const aw = st.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    const ah = st.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const w = Math.max(200, Math.min(aw, ah * 9 / 16));
+    const h = w * 16 / 9;
+    frame.style.width = w + 'px'; frame.style.height = h + 'px';
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    scale = cv.width / W;
+  }
+
+  /* ---------- Shop ---------- */
+  function renderShop() {
+    $('#shopWallet').textContent = wallet;
+    $('#freeLabel').textContent = 'احصل على ' + AD_CONFIG.freeCoins + ' عملة';
+    $('#btnFree').hidden = !Ads.canReward();
+    const box = $('#garage'); box.textContent = '';
+    CARS.forEach(m => {
+      const has = owned.includes(m.id), sel = selected === m.id;
+      const slot = document.createElement('div'); slot.className = 'slot' + (sel ? ' sel' : '');
+      const cvs = document.createElement('canvas'); cvs.width = 176; cvs.height = 224;
+      const c = cvs.getContext('2d'); c.scale(2, 2); drawCarModel(c, 44, 56, 0, 1, m);
+      const name = document.createElement('h3'); name.textContent = m.name;
+      const desc = document.createElement('p'); desc.textContent = m.desc;
+      const btn = document.createElement('button');
+      if (sel) { btn.className = 'btn ghost'; btn.textContent = 'مُختارة'; btn.disabled = true; }
+      else if (has) { btn.className = 'btn ghost'; btn.textContent = 'اختيار'; btn.onclick = () => selectCar(m.id); }
+      else {
+        btn.className = 'btn';
+        const label = document.createElement('span'); label.textContent = 'شراء';
+        const price = document.createElement('span'); price.className = 'price';
+        const ic = document.createElement('i'); ic.className = 'coin';
+        const n = document.createElement('span'); n.textContent = m.price;
+        price.append(ic, n); btn.append(label, price);
+        btn.disabled = wallet < m.price;
+        btn.onclick = () => buyCar(m);
+      }
+      slot.append(cvs, name, desc, btn);
+      if (!has && wallet < m.price) {
+        const need = document.createElement('small'); need.className = 'need';
+        need.textContent = 'ينقصك ' + (m.price - wallet) + ' عملة'; slot.append(need);
+      }
+      box.append(slot);
+    });
+  }
+  function selectCar(id) {
+    selected = id; store.set('car', id);
+    if (g) g.car = carById(id);
+    refreshStats(); renderShop();
+  }
+  function buyCar(m) {
+    if (owned.includes(m.id) || wallet < m.price) return;
+    wallet -= m.price; owned.push(m.id);
+    store.set('wallet', wallet); store.set('owned', owned);
+    selectCar(m.id);
+  }
+  function openShop() {
+    $('#shop').hidden = false; $('#shop .card').focus();
+    Ads.prepareReward('shop-coins', () => !$('#shop').hidden, renderShop);
+  }
+  function closeShop() { $('#shop').hidden = true; }
+
+  /* ---------- Events ---------- */
+  cv.addEventListener('pointerdown', e => {
+    if (state !== 'play') return;
+    const r = cv.getBoundingClientRect();
+    moveLane(e.clientX < r.left + r.width / 2 ? -1 : 1);
+  });
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('#shop').hidden && state !== 'ad') { closeShop(); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'a') moveLane(-1);
+    else if (e.key === 'ArrowRight' || e.key === 'd') moveLane(1);
+  });
+  addEventListener('resize', resize);
+  document.addEventListener('visibilitychange', () => { last = performance.now(); });
+
+  $('#btnStart').onclick = startGame;
+  $('#btnShop').onclick = openShop;
+  $('#shopClose').onclick = closeShop;
+  $('#btnFree').onclick = () => Ads.showRewarded(ok => {
+    if (!ok) return;
+    wallet += AD_CONFIG.freeCoins; store.set('wallet', wallet); refreshStats(); renderShop();
+  });
+  $('#btnAgain').onclick = () => maybeInterstitial(startGame);
+  $('#btnMenu').onclick = () => maybeInterstitial(toMenu);
+  $('#btnContinue').onclick = () => Ads.showRewarded(ok => { if (ok) revive(); });
+  $('#btnDouble').onclick = () => Ads.showRewarded(ok => {
+    if (!ok) return;
+    wallet += g.coins; g.doubled = true; store.set('wallet', wallet);
+    $('#btnDouble').hidden = true; $('#oCoins').textContent = '+' + (g.coins * 2); refreshStats();
+  });
+
+  /* ---------- Boot ---------- */
+  Ads.init(); setupBanner();
+  newRun(); refreshStats(); resize();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
