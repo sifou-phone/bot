@@ -6,6 +6,8 @@
     python -m tradebot paper     --config config.yaml
     python -m tradebot live      --config config.yaml
     python -m tradebot status    --config config.yaml
+    python -m tradebot scan      --config config.scalper.yaml [--watch]
+    python -m tradebot hunt      --config config.scalper.yaml [--live]
 """
 
 from __future__ import annotations
@@ -124,31 +126,82 @@ def cmd_download(cfg: BotConfig, args: argparse.Namespace) -> int:
     return 0
 
 
+def _confirm_live(cfg: BotConfig, args: argparse.Namespace) -> bool:
+    if not (cfg.exchange.api_key and cfg.exchange.api_secret):
+        raise SystemExit("Live mode requires EXCHANGE_API_KEY / EXCHANGE_API_SECRET")
+    if cfg.exchange.sandbox or args.yes:
+        return True
+    answer = input(f"⚠️  REAL-MONEY trading on {cfg.exchange.name}. Type 'yes' to continue: ")
+    return answer.strip().lower() == "yes"
+
+
+def _make_exchange(cfg: BotConfig, state):
+    from .exchange import LiveExchange, PaperExchange
+
+    if cfg.mode == "live":
+        return LiveExchange(cfg.exchange, cfg.symbol)
+    quote = state.paper_quote if state.paper_quote is not None else cfg.paper_balance
+    return PaperExchange(cfg.exchange, cfg.symbol, cfg.costs, quote, state.paper_base or 0.0)
+
+
 def cmd_trade(cfg: BotConfig, args: argparse.Namespace) -> int:
     from .engine import TradingEngine
-    from .exchange import LiveExchange, PaperExchange
     from .notifier import Notifier
     from .state import BotState
 
     cfg.mode = args.command
-    if cfg.mode == "live":
-        if not (cfg.exchange.api_key and cfg.exchange.api_secret):
-            raise SystemExit("Live mode requires EXCHANGE_API_KEY / EXCHANGE_API_SECRET")
-        if not cfg.exchange.sandbox and not args.yes:
-            answer = input(f"⚠️  REAL-MONEY trading on {cfg.exchange.name} {cfg.symbol}. Type 'yes' to continue: ")
-            if answer.strip().lower() != "yes":
-                return 1
+    if cfg.mode == "live" and not _confirm_live(cfg, args):
+        return 1
     setup_logging(cfg)
     state = BotState.load(cfg.state_file)
-    if cfg.mode == "live":
-        exchange = LiveExchange(cfg.exchange, cfg.symbol)
-    else:
-        quote = state.paper_quote if state.paper_quote is not None else cfg.paper_balance
-        base = state.paper_base or 0.0
-        exchange = PaperExchange(cfg.exchange, cfg.symbol, cfg.costs, quote, base)
+    exchange = _make_exchange(cfg, state)
     strategy = create_strategy(cfg.strategy.name, cfg.strategy.params)
     log.info("Starting %s trading with config: %s", cfg.mode, json.dumps(cfg.to_dict()))
     TradingEngine(cfg, exchange, strategy, Notifier(cfg.telegram), state).run()
+    return 0
+
+
+def _make_scanner(cfg: BotConfig, market):
+    from .scanner import Scanner
+
+    strategy = create_strategy(cfg.strategy.name, cfg.strategy.params)
+    return Scanner(market, strategy, cfg.scanner, cfg.timeframe, cfg.history_bars), strategy
+
+
+def cmd_scan(cfg: BotConfig, args: argparse.Namespace) -> int:
+    import time
+
+    from .exchange import create_ccxt
+    from .scanner import format_table
+
+    scanner, _ = _make_scanner(cfg, create_ccxt(cfg.exchange, authenticated=False))
+    while True:
+        cands = scanner.scan()
+        print(f"\n{pd.Timestamp.now(tz='UTC'):%Y-%m-%d %H:%M:%S} UTC  {cfg.exchange.name}  "
+              f"{len(cands)} pairs  strategy={cfg.strategy.name}")
+        print(format_table(cands, args.top))
+        if not args.watch:
+            return 0
+        step = scanner.tf_seconds
+        time.sleep(step - time.time() % step + 3)  # just after the next candle closes
+
+
+def cmd_hunt(cfg: BotConfig, args: argparse.Namespace) -> int:
+    from .hunter import HunterEngine
+    from .notifier import Notifier
+    from .state import BotState
+
+    cfg.mode = "live" if args.live else "paper"
+    if cfg.mode == "live" and not _confirm_live(cfg, args):
+        return 1
+    setup_logging(cfg)
+    state = BotState.load(cfg.state_file)
+    if state.position is not None and state.position.symbol:
+        cfg.symbol = state.position.symbol
+    exchange = _make_exchange(cfg, state)
+    scanner, strategy = _make_scanner(cfg, exchange.ex)
+    log.info("Starting %s hunt with config: %s", cfg.mode, json.dumps(cfg.to_dict()))
+    HunterEngine(cfg, exchange, strategy, scanner, Notifier(cfg.telegram), state).run()
     return 0
 
 
@@ -197,6 +250,12 @@ def build_parser() -> argparse.ArgumentParser:
     live = add("live", "trade with real orders on the exchange")
     live.add_argument("--yes", action="store_true", help="skip the real-money confirmation prompt")
     add("status", "show saved bot state")
+    sc = add("scan", "rank the market's pairs by breakout / liquidity (read only)")
+    sc.add_argument("--watch", action="store_true", help="refresh after every closed candle")
+    sc.add_argument("--top", type=int, default=15)
+    hunt = add("hunt", "scan the market and trade the strongest breakout (paper by default)")
+    hunt.add_argument("--live", action="store_true", help="real orders instead of paper trading")
+    hunt.add_argument("--yes", action="store_true", help="skip the real-money confirmation prompt")
     return parser
 
 
@@ -210,8 +269,9 @@ def main(argv: list[str] | None = None) -> int:
         cfg.strategy.name, cfg.strategy.params = args.strategy, {}
     cfg.symbol = args.symbol or cfg.symbol
     cfg.timeframe = args.timeframe or cfg.timeframe
-    if args.command not in ("paper", "live"):
+    if args.command not in ("paper", "live", "hunt"):
         logging.basicConfig(level=cfg.log_level.upper(), format="%(levelname)s %(name)s: %(message)s")
     handlers = {"backtest": cmd_backtest, "optimize": cmd_optimize, "download": cmd_download,
-                "paper": cmd_trade, "live": cmd_trade, "status": cmd_status}
+                "paper": cmd_trade, "live": cmd_trade, "status": cmd_status,
+                "scan": cmd_scan, "hunt": cmd_hunt}
     return handlers[args.command](cfg, args)

@@ -81,3 +81,52 @@ def synthetic_ohlcv(bars: int = 3000, timeframe: str = "1h", start_price: float 
     volume = rng.lognormal(3, 0.5, bars)
     return pd.DataFrame({"open": open_, "high": high, "low": low, "close": close, "volume": volume},
                         index=index.rename("timestamp"))
+
+
+def fetch_recent(exchange: Any, symbol: str, timeframe: str, limit: int, batch: int = 300) -> pd.DataFrame:
+    """The latest ``limit`` candles, paging forward because exchanges cap each request."""
+    step = timeframe_seconds(timeframe) * 1000
+    now_ms = time.time() * 1000
+    since = int(now_ms - (limit + 1) * step)
+    rows: list[list[Any]] = []
+    last_seen = None
+    while True:
+        chunk = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=batch)
+        if not chunk:
+            break
+        rows.extend(chunk)
+        last = chunk[-1][0]
+        if (last_seen is not None and last <= last_seen) or last + step > now_ms:
+            break
+        last_seen, since = last, last + step
+    if not rows:
+        return pd.DataFrame(columns=COLUMNS[1:], index=pd.DatetimeIndex([], tz="UTC", name="timestamp"))
+    return ohlcv_to_frame(rows).tail(limit)
+
+
+class CandleCache:
+    """Keeps recent candles per symbol and only downloads the newest ones on each call.
+
+    The last cached candles are always re-fetched because the newest one may still
+    have been forming when it was stored.
+    """
+
+    def __init__(self, exchange: Any, batch: int = 300) -> None:
+        self.exchange = exchange
+        self.batch = batch
+        self._frames: dict[tuple[str, str], pd.DataFrame] = {}
+
+    def get(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
+        key = (symbol, timeframe)
+        cached = self._frames.get(key)
+        step = timeframe_seconds(timeframe)
+        stale = (cached is None or len(cached) < limit
+                 or time.time() - cached.index[-1].timestamp() > step * (self.batch - 5))
+        if stale:
+            df = fetch_recent(self.exchange, symbol, timeframe, limit, self.batch)
+        else:
+            since = int(cached.index[-2].timestamp() * 1000)
+            new = ohlcv_to_frame(self.exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=self.batch))
+            df = cached if new.empty else pd.concat([cached[cached.index < new.index[0]], new]).tail(limit)
+        self._frames[key] = df
+        return df

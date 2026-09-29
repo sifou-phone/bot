@@ -1,7 +1,7 @@
 """Exchange access: a thin ccxt wrapper for live trading and a simulated paper broker.
 
 Both expose the same small interface used by the trading engine:
-    fetch_candles, last_price, balances, market_buy, market_sell, amount_to_precision
+    fetch_candles, last_price, balances, market_buy, market_sell, amount_to_precision, set_symbol
 """
 
 from __future__ import annotations
@@ -14,7 +14,7 @@ from typing import Any, Callable, TypeVar
 import pandas as pd
 
 from .config import CostsConfig, ExchangeConfig
-from .data import ohlcv_to_frame
+from .data import CandleCache
 
 log = logging.getLogger(__name__)
 T = TypeVar("T")
@@ -59,14 +59,19 @@ class LiveExchange:
     def __init__(self, cfg: ExchangeConfig, symbol: str) -> None:
         self.ex = create_ccxt(cfg)
         self.symbol = symbol
+        self.candles = CandleCache(self.ex)
         retry(self.ex.load_markets)
+        self.set_symbol(symbol)
+
+    def set_symbol(self, symbol: str) -> None:
         if symbol not in self.ex.markets:
-            raise ValueError(f"Symbol {symbol} is not listed on {cfg.name}")
+            raise ValueError(f"Symbol {symbol} is not listed on {self.ex.id}")
+        self.symbol = symbol
         self.market = self.ex.market(symbol)
         self.base, self.quote = self.market["base"], self.market["quote"]
 
     def fetch_candles(self, timeframe: str, limit: int) -> pd.DataFrame:
-        return ohlcv_to_frame(retry(lambda: self.ex.fetch_ohlcv(self.symbol, timeframe, limit=limit)))
+        return retry(lambda: self.candles.get(self.symbol, timeframe, limit))
 
     def last_price(self) -> float:
         return float(retry(lambda: self.ex.fetch_ticker(self.symbol))["last"])
@@ -117,9 +122,21 @@ class PaperExchange:
         self.quote_balance = quote_balance
         self.base_balance = base_balance
         self._order_id = 0
+        self.candles = CandleCache(self.ex)
+
+    def set_symbol(self, symbol: str) -> None:
+        if symbol == self.symbol:
+            return
+        if self.base_balance > 0:
+            value = self.base_balance * self.last_price()
+            if value > 1.0:
+                raise RuntimeError(f"Cannot switch symbol while holding {self.base_balance} {self.symbol}")
+            log.info("Dropping %.8f %s dust (%.4f quote)", self.base_balance, self.symbol, value)
+            self.base_balance = 0.0
+        self.symbol = symbol
 
     def fetch_candles(self, timeframe: str, limit: int) -> pd.DataFrame:
-        return ohlcv_to_frame(retry(lambda: self.ex.fetch_ohlcv(self.symbol, timeframe, limit=limit)))
+        return retry(lambda: self.candles.get(self.symbol, timeframe, limit))
 
     def last_price(self) -> float:
         return float(retry(lambda: self.ex.fetch_ticker(self.symbol))["last"])

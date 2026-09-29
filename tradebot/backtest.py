@@ -5,7 +5,8 @@ Execution model (no look-ahead):
   * stop-loss / take-profit are checked against each bar's high/low. If a bar
     gaps through the level, the fill happens at the open. If both levels are
     touched in the same bar the stop is assumed first (conservative);
-  * every fill pays ``fee_rate`` and adverse ``slippage``.
+  * every fill pays ``fee_rate`` and adverse ``slippage``;
+  * break-even and trailing stop updates use the bar close and apply from the next bar.
 """
 
 from __future__ import annotations
@@ -49,6 +50,9 @@ class Backtester:
             raise ValueError("No data to backtest")
         signals = self.strategy.generate_signals(df).reindex(df.index).fillna(0).astype(int)
         atr = ind.atr(df, self.risk.cfg.atr_period).to_numpy()
+        hints = self.strategy.stop_levels(df)
+        stop_hint = (hints.reindex(df.index).to_numpy(dtype=float) if hints is not None
+                     else np.full(len(df), np.nan))
         o, h, l, c = (df[k].to_numpy(dtype=float) for k in ("open", "high", "low", "close"))
         sig = signals.to_numpy()
         times = df.index
@@ -95,12 +99,13 @@ class Backtester:
                         halted = reason
                 else:
                     fill = o[i] * (1 + slip)
-                    plan = self.risk.plan_entry(cash, cash, fill, atr[i - 1] if i else np.nan)
+                    plan = self.risk.plan_entry(cash, cash, fill, atr[i - 1] if i else np.nan,
+                                                stop_hint[i - 1] if i else None)
                     if plan:
                         qty = plan.qty
                         entry_fee = qty * fill * fee
                         cash -= qty * fill + entry_fee
-                        pos = {"time": times[i], "bar": i, "entry": fill, "stop": plan.stop,
+                        pos = {"time": times[i], "bar": i, "entry": fill, "stop": plan.stop, "initial_stop": plan.stop,
                                "tp": plan.take_profit, "entry_fee": entry_fee, "cost": qty * fill + entry_fee}
             pending = 0
 
@@ -116,6 +121,7 @@ class Backtester:
                 elif tp is not None and h[i] >= tp:
                     close_position(i, tp, "take_profit")
                 else:
+                    stop = self.risk.breakeven_stop(stop, pos["entry"], pos["initial_stop"], c[i])
                     pos["stop"] = self.risk.trail_stop(stop, c[i], atr[i])
 
             equity[i] = cash + qty * c[i]

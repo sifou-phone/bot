@@ -37,6 +37,13 @@ class Strategy(ABC):
         numeric = [v for v in self.params.values() if isinstance(v, int)]
         return max(numeric, default=0) * 3
 
+    def stop_levels(self, df: pd.DataFrame) -> pd.Series | None:
+        """Optional structure-based stop price per bar (e.g. under a broken level).
+
+        Returning None (or NaN for a bar) falls back to the ATR stop of the risk manager.
+        """
+        return None
+
     @abstractmethod
     def generate_signals(self, df: pd.DataFrame) -> pd.Series:
         """Return a Series (same index as ``df``) of BUY / SELL / HOLD."""

@@ -60,29 +60,33 @@ class TradingEngine:
         self.state.save(self.cfg.state_file)
 
     # ------------------------------------------------------------------ actions
-    def open_long(self, price: float, atr: float, now: float) -> None:
+    def open_long(self, price: float, atr: float, now: float, stop_hint: float | None = None,
+                  note: str = "") -> bool:
         quote, _ = self.exchange.balances()
-        plan = self.risk.plan_entry(self.equity(price), quote, price, atr)
+        plan = self.risk.plan_entry(self.equity(price), quote, price, atr, stop_hint)
         if plan is None:
-            log.info("Entry skipped: position too small or ATR unavailable")
-            return
+            log.info("Entry skipped: stop invalid, position too small or ATR unavailable")
+            return False
         fill = self.exchange.market_buy(plan.qty)
         if fill["qty"] <= 0:
             log.warning("Buy order returned no fill: %s", fill)
-            return
+            return False
         # Re-anchor stop/TP on the actual fill price.
         shift = fill["price"] - plan.entry
         self.state.position = Position(
             qty=fill["qty"], entry=fill["price"], stop=plan.stop + shift,
             take_profit=plan.take_profit + shift if plan.take_profit else None,
             opened_at=datetime.fromtimestamp(now, timezone.utc).isoformat(),
-            entry_fee=fill["fee"], order_id=fill["id"],
+            entry_fee=fill["fee"], order_id=fill["id"], symbol=self.cfg.symbol,
+            initial_stop=plan.stop + shift,
         )
         self._save()
         p = self.state.position
-        tp = f"{p.take_profit:.4f}" if p.take_profit else "-"
-        self.notifier.send(f"🟢 BUY {self.cfg.symbol}\nqty {p.qty:.6f} @ {p.entry:.4f}\n"
-                           f"stop {p.stop:.4f} | tp {tp}")
+        tp = f"{p.take_profit:.6g}" if p.take_profit else "follow liquidity"
+        self.notifier.send(f"🟢 BUY {self.cfg.symbol}\nqty {p.qty:.6f} @ {p.entry:.6g}\n"
+                           f"stop {p.stop:.6g} ({(p.stop / p.entry - 1) * 100:.2f}%) | tp {tp}"
+                           + (f"\n{note}" if note else ""))
+        return True
 
     def close_long(self, reason: str, now: float) -> None:
         pos = self.state.position
@@ -98,7 +102,7 @@ class TradingEngine:
             "entry_time": pos.opened_at, "exit_time": datetime.fromtimestamp(now, timezone.utc).isoformat(),
             "entry": pos.entry, "exit": fill["price"], "qty": fill["qty"], "pnl": pnl,
             "return_pct": pnl / cost * 100 if cost else 0.0, "fees": pos.entry_fee + fill["fee"],
-            "reason": reason,
+            "reason": reason, "symbol": self.cfg.symbol,
         }
         self.state.trades.append(trade)
         self.state.position = None
@@ -122,10 +126,7 @@ class TradingEngine:
 
         # 2) account bookkeeping and circuit breakers
         equity = self.equity(price)
-        today = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
-        if self.state.day != today:
-            self.state.day, self.state.day_start_equity = today, equity
-        self.state.peak_equity = max(self.state.peak_equity, equity)
+        self._update_account(equity, now)
 
         # 3) strategy decisions on newly closed candles
         df = self.closed_candles(now)
@@ -139,6 +140,25 @@ class TradingEngine:
             self.on_candle(df, price, equity, now)
         self._save()
 
+    def _update_account(self, equity: float, now: float) -> None:
+        today = datetime.fromtimestamp(now, timezone.utc).date().isoformat()
+        if self.state.day != today:
+            self.state.day, self.state.day_start_equity = today, equity
+        self.state.peak_equity = max(self.state.peak_equity, equity)
+
+    def _entry_blocked(self, equity: float) -> bool:
+        if self.state.halted:
+            log.warning("Entry blocked, bot halted: %s", self.state.halted)
+            return True
+        reason = self.risk.halt_reason(equity, self.state.day_start_equity, self.state.peak_equity)
+        if reason:
+            if "drawdown" in reason:
+                self.state.halted = reason
+                self.notifier.send(f"⛔ Trading halted: {reason}. Reset the state file to resume.")
+            log.warning("Entry blocked: %s", reason)
+            return True
+        return False
+
     def on_candle(self, df: pd.DataFrame, price: float, equity: float, now: float) -> None:
         sig = int(self.strategy.generate_signals(df).iloc[-1])
         atr = float(ind.atr(df, self.cfg.risk.atr_period).iloc[-1])
@@ -150,25 +170,18 @@ class TradingEngine:
             if sig == SELL:
                 self.close_long("signal", now)
                 return
-            new_stop = self.risk.trail_stop(pos.stop, float(df["close"].iloc[-1]), atr)
+            close = float(df["close"].iloc[-1])
+            new_stop = self.risk.breakeven_stop(pos.stop, pos.entry, pos.initial_stop or pos.stop, close)
+            new_stop = self.risk.trail_stop(new_stop, close, atr)
             if new_stop > pos.stop:
-                log.info("Trailing stop %.4f -> %.4f", pos.stop, new_stop)
+                log.info("Stop raised %.6g -> %.6g", pos.stop, new_stop)
                 pos.stop = new_stop
             return
 
-        if sig != BUY:
+        if sig != BUY or self._entry_blocked(equity):
             return
-        if self.state.halted:
-            log.warning("Entry blocked, bot halted: %s", self.state.halted)
-            return
-        reason = self.risk.halt_reason(equity, self.state.day_start_equity, self.state.peak_equity)
-        if reason:
-            if "drawdown" in reason:
-                self.state.halted = reason
-                self.notifier.send(f"⛔ Trading halted: {reason}. Reset the state file to resume.")
-            log.warning("Entry blocked: %s", reason)
-            return
-        self.open_long(price, atr, now)
+        hints = self.strategy.stop_levels(df)
+        self.open_long(price, atr, now, None if hints is None else float(hints.iloc[-1]))
 
     def run(self) -> None:
         self._running = True

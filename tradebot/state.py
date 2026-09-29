@@ -19,6 +19,8 @@ class Position:
     opened_at: str
     entry_fee: float = 0.0
     order_id: str | None = None
+    symbol: str = ""
+    initial_stop: float = 0.0
 
 
 @dataclass

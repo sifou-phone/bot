@@ -33,6 +33,9 @@ class RiskConfig:
     stop_atr_mult: float = 2.0
     take_profit_rr: float = 2.0  # reward:risk ratio; 0 disables the take-profit
     trailing_atr_mult: float = 0.0  # 0 disables the trailing stop
+    max_stop_pct: float = 0.0  # hard cap on stop distance from entry, e.g. 0.015 = 1.5% (0 = off)
+    min_stop_pct: float = 0.0  # floor on stop distance so fees/noise don't dominate (0 = off)
+    breakeven_rr: float = 0.0  # move the stop to break-even (+fees) after this many R (0 = off)
     max_position_pct: float = 0.5  # max notional as a fraction of equity
     daily_loss_limit: float = 0.03  # stop opening trades after this daily loss
     max_drawdown: float = 0.20  # kill switch: stop trading after this drawdown
@@ -61,6 +64,21 @@ class TelegramConfig:
 
 
 @dataclass
+class ScannerConfig:
+    """Market scanner used by ``scan`` and ``hunt`` to find coins that are breaking out."""
+
+    quote: str = "USDT"
+    universe_size: int = 30  # most traded pairs to watch
+    min_quote_volume_24h: float = 5_000_000.0  # liquidity floor for a pair to be considered
+    refresh_minutes: int = 15  # how often the watch list is rebuilt from 24h tickers
+    symbols: list[str] = field(default_factory=list)  # fixed watch list (skips the ranking)
+    exclude: list[str] = field(default_factory=lambda: [
+        "USDC", "DAI", "FDUSD", "TUSD", "USDE", "PYUSD", "USDG", "RLUSD", "EUR", "USD1", "BUSD"])
+    max_chase_pct: float = 0.005  # skip if price ran this far above the signal close
+    watch_distance_pct: float = 0.005  # "WATCH" when this close under resistance with rising volume
+
+
+@dataclass
 class BotConfig:
     symbol: str = "BTC/USDT"
     timeframe: str = "1h"
@@ -77,6 +95,7 @@ class BotConfig:
     costs: CostsConfig = field(default_factory=CostsConfig)
     backtest: BacktestConfig = field(default_factory=BacktestConfig)
     telegram: TelegramConfig = field(default_factory=TelegramConfig)
+    scanner: ScannerConfig = field(default_factory=ScannerConfig)
 
     def to_dict(self, redact: bool = True) -> dict[str, Any]:
         data = asdict(self)
@@ -141,6 +160,10 @@ def validate(cfg: BotConfig) -> None:
     r = cfg.risk
     if not 0 < r.risk_per_trade <= 0.1:
         errors.append("risk.risk_per_trade must be in (0, 0.1]")
+    if not 0 <= r.min_stop_pct < 0.5 or not 0 <= r.max_stop_pct < 0.5:
+        errors.append("risk.min_stop_pct and risk.max_stop_pct must be in [0, 0.5)")
+    if r.max_stop_pct and r.min_stop_pct > r.max_stop_pct:
+        errors.append("risk.min_stop_pct cannot exceed risk.max_stop_pct")
     if r.stop_atr_mult <= 0:
         errors.append("risk.stop_atr_mult must be > 0")
     if not 0 < r.max_position_pct <= 1:

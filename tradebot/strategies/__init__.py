@@ -4,11 +4,12 @@ from typing import Any
 
 from .base import BUY, HOLD, SELL, Strategy
 from .ema_cross import EmaCrossStrategy
+from .liquidity_breakout import LiquidityBreakoutStrategy
 from .macd_trend import MacdTrendStrategy
 from .rsi_reversion import RsiReversionStrategy
 
 STRATEGIES: dict[str, type[Strategy]] = {
-    cls.name: cls for cls in (EmaCrossStrategy, RsiReversionStrategy, MacdTrendStrategy)
+    cls.name: cls for cls in (EmaCrossStrategy, RsiReversionStrategy, MacdTrendStrategy, LiquidityBreakoutStrategy)
 }
 
 
