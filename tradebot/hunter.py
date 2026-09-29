@@ -42,16 +42,19 @@ class HunterEngine(TradingEngine):
             if self.state.position is not None:
                 return
         bar = int(now // self.tf_seconds)
-        if bar == self._last_scan_bar:
-            return
-        self._last_scan_bar = bar
+        if bar != self._last_scan_bar:
+            self._last_scan_bar = bar
+            self._hunt(now)
+        self.publish(None, now)
 
+    def _hunt(self, now: float) -> None:
         quote, _ = self.exchange.balances()
         self._update_account(quote, now)
         if self._entry_blocked(quote):
             self._save()
             return
         cands = self.scanner.scan(now)
+        self.last_candidates, self.last_scan_at = cands, now
         active = [c for c in cands if c.status in ("BUY", "WATCH")]
         if active:
             log.info("Scanner:\n%s", format_table(active, 10))

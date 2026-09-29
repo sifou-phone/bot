@@ -13,6 +13,7 @@ import logging
 import signal
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -22,6 +23,7 @@ from .config import BotConfig
 from .metrics import timeframe_seconds
 from .notifier import Notifier
 from .risk import RiskManager
+from .snapshot import SnapshotWriter
 from .state import BotState, Position
 from .strategies import BUY, SELL, Strategy
 
@@ -39,6 +41,9 @@ class TradingEngine:
         self.state = state if state is not None else BotState.load(cfg.state_file)
         self.tf_seconds = timeframe_seconds(cfg.timeframe)
         self._running = False
+        self.snapshot = SnapshotWriter(Path(cfg.state_file).parent)
+        self.last_candidates: list[Any] = []  # latest scanner results (hunter mode)
+        self.last_scan_at: float | None = None
 
     # ------------------------------------------------------------------ helpers
     def equity(self, price: float) -> float:
@@ -139,6 +144,38 @@ class TradingEngine:
             self.state.last_candle = last_ts
             self.on_candle(df, price, equity, now)
         self._save()
+        self.publish(price, now)
+
+    def publish(self, price: float | None, now: float) -> None:
+        """Write the live snapshot read by the dashboard. Never breaks trading."""
+        try:
+            quote, _ = self.exchange.balances()
+            pos = self.state.position
+            position = None
+            if pos is not None and price:
+                value = pos.qty * price
+                cost = pos.qty * pos.entry + pos.entry_fee
+                exit_fee = value * self.cfg.costs.fee_rate
+                risk = pos.entry - (pos.initial_stop or pos.stop)
+                position = {
+                    **pos.__dict__, "price": price, "value": value,
+                    "unrealized_pnl": value - exit_fee - cost,
+                    "unrealized_pct": (value - exit_fee - cost) / cost * 100 if cost else 0.0,
+                    "r_multiple": (price - pos.entry) / risk if risk > 0 else None,
+                    "stop_distance_pct": (pos.stop / price - 1) * 100,
+                }
+            equity = quote + (position["value"] if position else 0.0)
+            self.snapshot.write({
+                "updated": now, "mode": self.cfg.mode, "exchange": self.cfg.exchange.name,
+                "strategy": self.strategy.name, "timeframe": self.cfg.timeframe, "symbol": self.cfg.symbol,
+                "equity": equity, "quote": quote, "peak_equity": self.state.peak_equity,
+                "day_start_equity": self.state.day_start_equity, "halted": self.state.halted,
+                "position": position,
+                "scanner": {"at": self.last_scan_at, "candidates": self.last_candidates},
+                "risk": self.cfg.risk, "poll_seconds": self.cfg.poll_seconds,
+            }, equity, now)
+        except Exception as exc:  # noqa: BLE001 - the dashboard is best effort
+            log.warning("Could not write dashboard snapshot: %s", exc)
 
     def _update_account(self, equity: float, now: float) -> None:
         today = datetime.fromtimestamp(now, timezone.utc).date().isoformat()

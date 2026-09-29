@@ -7,7 +7,8 @@
     python -m tradebot live      --config config.yaml
     python -m tradebot status    --config config.yaml
     python -m tradebot scan      --config config.scalper.yaml [--watch]
-    python -m tradebot hunt      --config config.scalper.yaml [--live]
+    python -m tradebot hunt      --config config.scalper.yaml [--live] [--dashboard 8080]
+    python -m tradebot dashboard --config config.scalper.yaml [--port 8080]
 """
 
 from __future__ import annotations
@@ -157,6 +158,7 @@ def cmd_trade(cfg: BotConfig, args: argparse.Namespace) -> int:
     exchange = _make_exchange(cfg, state)
     strategy = create_strategy(cfg.strategy.name, cfg.strategy.params)
     log.info("Starting %s trading with config: %s", cfg.mode, json.dumps(cfg.to_dict()))
+    _maybe_dashboard(cfg, args)
     TradingEngine(cfg, exchange, strategy, Notifier(cfg.telegram), state).run()
     return 0
 
@@ -205,7 +207,31 @@ def cmd_hunt(cfg: BotConfig, args: argparse.Namespace) -> int:
     market = exchange.ex if cfg.mode == "paper" else create_ccxt(cfg.exchange, authenticated=False)
     scanner, strategy = _make_scanner(cfg, market)
     log.info("Starting %s hunt with config: %s", cfg.mode, json.dumps(cfg.to_dict()))
+    _maybe_dashboard(cfg, args)
     HunterEngine(cfg, exchange, strategy, scanner, Notifier(cfg.telegram), state).run()
+    return 0
+
+
+def _dashboard_data(cfg: BotConfig):
+    from .dashboard import DashboardData
+
+    start = cfg.paper_balance if cfg.mode == "paper" else None
+    return DashboardData(cfg.state_file, cfg.log_file, start)
+
+
+def _maybe_dashboard(cfg: BotConfig, args: argparse.Namespace) -> None:
+    if getattr(args, "dashboard", None):
+        from .dashboard import serve
+
+        serve(_dashboard_data(cfg), args.host, args.dashboard, background=True)
+        print(f"Dashboard: http://{args.host}:{args.dashboard}")
+
+
+def cmd_dashboard(cfg: BotConfig, args: argparse.Namespace) -> int:
+    from .dashboard import serve
+
+    print(f"Dashboard: http://{args.host}:{args.port}  (state: {cfg.state_file})")
+    serve(_dashboard_data(cfg), args.host, args.port)
     return 0
 
 
@@ -250,9 +276,15 @@ def build_parser() -> argparse.ArgumentParser:
     dl = add("download", "download historical candles to CSV")
     dl.add_argument("--out", required=True)
 
-    add("paper", "trade with simulated money on live market data")
+    def dash_opts(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--dashboard", type=int, metavar="PORT", help="also serve the web dashboard on PORT")
+        p.add_argument("--host", default="127.0.0.1",
+                       help="dashboard bind address (default local only; it has no login)")
+
+    dash_opts(add("paper", "trade with simulated money on live market data"))
     live = add("live", "trade with real orders on the exchange")
     live.add_argument("--yes", action="store_true", help="skip the real-money confirmation prompt")
+    dash_opts(live)
     add("status", "show saved bot state")
     sc = add("scan", "rank the market's pairs by breakout / liquidity (read only)")
     sc.add_argument("--watch", action="store_true", help="refresh after every closed candle")
@@ -260,6 +292,10 @@ def build_parser() -> argparse.ArgumentParser:
     hunt = add("hunt", "scan the market and trade the strongest breakout (paper by default)")
     hunt.add_argument("--live", action="store_true", help="real orders instead of paper trading")
     hunt.add_argument("--yes", action="store_true", help="skip the real-money confirmation prompt")
+    dash_opts(hunt)
+    dash = add("dashboard", "web dashboard for a running (or stopped) bot, read only")
+    dash.add_argument("--port", type=int, default=8080)
+    dash.add_argument("--host", default="127.0.0.1", help="bind address (default local only; it has no login)")
     return parser
 
 
@@ -273,9 +309,9 @@ def main(argv: list[str] | None = None) -> int:
         cfg.strategy.name, cfg.strategy.params = args.strategy, {}
     cfg.symbol = args.symbol or cfg.symbol
     cfg.timeframe = args.timeframe or cfg.timeframe
-    if args.command not in ("paper", "live", "hunt"):
+    if args.command not in ("paper", "live", "hunt", "dashboard"):
         logging.basicConfig(level=cfg.log_level.upper(), format="%(levelname)s %(name)s: %(message)s")
     handlers = {"backtest": cmd_backtest, "optimize": cmd_optimize, "download": cmd_download,
                 "paper": cmd_trade, "live": cmd_trade, "status": cmd_status,
-                "scan": cmd_scan, "hunt": cmd_hunt}
+                "scan": cmd_scan, "hunt": cmd_hunt, "dashboard": cmd_dashboard}
     return handlers[args.command](cfg, args)
