@@ -1,0 +1,48 @@
+# Copy to config.yaml and adjust. Secrets go in .env, not here.
+symbol: BTC/USDT
+timeframe: 1h            # 1m 5m 15m 1h 4h 1d ...
+mode: paper              # paper | live
+paper_balance: 10000     # starting USDT for paper trading
+history_bars: 500        # candles loaded each cycle for indicators
+poll_seconds: 30         # how often the loop checks price / new candles
+state_file: data/state.json
+log_file: logs/tradebot.log
+log_level: INFO
+
+exchange:
+  name: binance          # any ccxt exchange id: binance, bybit, okx, kraken, kucoin...
+  sandbox: true          # testnet orders in live mode; set false for real money
+  options: {}
+
+strategy:
+  name: ema_cross        # ema_cross | rsi_reversion | macd_trend
+  params:
+    fast: 12
+    slow: 26
+    trend: 200
+    adx_period: 14
+    adx_min: 20
+
+risk:
+  risk_per_trade: 0.01   # lose at most 1% of equity if the stop is hit
+  atr_period: 14
+  stop_atr_mult: 2.0     # stop-loss = entry - 2 x ATR
+  take_profit_rr: 2.0    # take-profit at 2R (0 = off)
+  trailing_atr_mult: 3.0 # trailing stop distance in ATR (0 = off)
+  max_position_pct: 0.5  # never put more than 50% of equity in one position
+  daily_loss_limit: 0.03 # no new entries after -3% in a day
+  max_drawdown: 0.20     # kill switch after -20% from peak equity
+  min_notional: 10       # exchange minimum order value (USDT)
+
+costs:
+  fee_rate: 0.001        # 0.1% per fill
+  slippage: 0.0005       # 0.05% per market order
+
+backtest:
+  initial_capital: 10000
+  since: "2024-01-01"
+  until: ""
+  data_file: ""          # optional CSV (timestamp,open,high,low,close,volume)
+
+telegram:
+  enabled: false
