@@ -49,6 +49,10 @@ def load_data(cfg: BotConfig, synthetic: bool) -> pd.DataFrame:
         return synthetic_ohlcv(timeframe=cfg.timeframe)
     if cfg.backtest.data_file:
         return load_csv(cfg.backtest.data_file)
+    return download_history(cfg)
+
+
+def download_history(cfg: BotConfig) -> pd.DataFrame:
     from .exchange import create_ccxt
 
     ex = create_ccxt(cfg.exchange, authenticated=False)
@@ -114,7 +118,7 @@ def cmd_optimize(cfg: BotConfig, args: argparse.Namespace) -> int:
 
 
 def cmd_download(cfg: BotConfig, args: argparse.Namespace) -> int:
-    df = load_data(cfg, synthetic=False)
+    df = download_history(cfg)  # always fetch, even when backtest.data_file is set
     save_csv(df, args.out)
     print(f"Saved {len(df)} candles to {args.out}")
     return 0

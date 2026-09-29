@@ -31,6 +31,9 @@ def create_ccxt(cfg: ExchangeConfig, authenticated: bool = True) -> Any:
         if cfg.password:
             params["password"] = cfg.password
     ex = getattr(ccxt, cfg.name)(params)
+    # ccxt disables requests' ``trust_env``; re-enable it so HTTPS_PROXY / NO_PROXY and
+    # REQUESTS_CA_BUNDLE are honored (corporate or TLS-inspecting proxies).
+    ex.session.trust_env = True
     if cfg.sandbox and authenticated:
         ex.set_sandbox_mode(True)
     return ex
