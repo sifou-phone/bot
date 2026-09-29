@@ -18,6 +18,7 @@ from .data import CandleCache
 
 log = logging.getLogger(__name__)
 T = TypeVar("T")
+BINANCE_DATA_API = "https://data-api.binance.vision/api/v3"
 
 
 def create_ccxt(cfg: ExchangeConfig, authenticated: bool = True) -> Any:
@@ -26,6 +27,9 @@ def create_ccxt(cfg: ExchangeConfig, authenticated: bool = True) -> Any:
     if not hasattr(ccxt, cfg.name):
         raise ValueError(f"Unknown exchange '{cfg.name}'")
     params: dict[str, Any] = {"enableRateLimit": True, "options": dict(cfg.options)}
+    if cfg.name == "binance":
+        # The bot trades spot only; skip loading futures markets (other hosts, more requests).
+        params["options"].setdefault("fetchMarkets", {"types": ["spot"]})
     if authenticated:
         params.update(apiKey=cfg.api_key, secret=cfg.api_secret)
         if cfg.password:
@@ -34,6 +38,10 @@ def create_ccxt(cfg: ExchangeConfig, authenticated: bool = True) -> Any:
     # ccxt disables requests' ``trust_env``; re-enable it so HTTPS_PROXY / NO_PROXY and
     # REQUESTS_CA_BUNDLE are honored (corporate or TLS-inspecting proxies).
     ex.session.trust_env = True
+    if not authenticated:
+        url = BINANCE_DATA_API if cfg.market_data_url == "auto" and cfg.name == "binance" else cfg.market_data_url
+        if url and url != "auto":
+            ex.urls["api"]["public"] = url
     if cfg.sandbox and authenticated:
         ex.set_sandbox_mode(True)
     return ex

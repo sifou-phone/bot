@@ -199,7 +199,11 @@ def cmd_hunt(cfg: BotConfig, args: argparse.Namespace) -> int:
     if state.position is not None and state.position.symbol:
         cfg.symbol = state.position.symbol
     exchange = _make_exchange(cfg, state)
-    scanner, strategy = _make_scanner(cfg, exchange.ex)
+    from .exchange import create_ccxt
+
+    # Signals always come from real public market data, even when orders go to a testnet.
+    market = exchange.ex if cfg.mode == "paper" else create_ccxt(cfg.exchange, authenticated=False)
+    scanner, strategy = _make_scanner(cfg, market)
     log.info("Starting %s hunt with config: %s", cfg.mode, json.dumps(cfg.to_dict()))
     HunterEngine(cfg, exchange, strategy, scanner, Notifier(cfg.telegram), state).run()
     return 0

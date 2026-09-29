@@ -14,24 +14,58 @@ from .metrics import timeframe_seconds
 
 log = logging.getLogger(__name__)
 COLUMNS = ["timestamp", "open", "high", "low", "close", "volume"]
+#: Optional 7th column: base volume bought by market (taker) buy orders. Binance reports it,
+#: which gives a real buy/sell delta per candle instead of one estimated from the candle shape.
+TAKER_BUY = "taker_buy"
 
 
 def ohlcv_to_frame(rows: list[list[Any]]) -> pd.DataFrame:
-    df = pd.DataFrame(rows, columns=COLUMNS)
+    cols = COLUMNS + [TAKER_BUY] if rows and len(rows[0]) > len(COLUMNS) else COLUMNS
+    df = pd.DataFrame(rows, columns=cols)
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms", utc=True)
-    df = df.drop_duplicates("timestamp").set_index("timestamp").sort_index()
+    df = df.drop_duplicates("timestamp", keep="last").set_index("timestamp").sort_index()
     return df.astype(float)
 
 
+def _binance_spot(exchange: Any, symbol: str) -> dict[str, Any] | None:
+    if getattr(exchange, "id", "") != "binance" or not hasattr(exchange, "publicGetKlines"):
+        return None
+    exchange.load_markets()
+    market = exchange.market(symbol)
+    return market if market.get("spot") else None
+
+
+def max_batch(exchange: Any, symbol: str = "") -> int:
+    """Candles per request: Binance serves 1000, most exchanges 300 or fewer."""
+    return 1000 if getattr(exchange, "id", "") == "binance" else 300
+
+
+def fetch_candles_raw(exchange: Any, symbol: str, timeframe: str, since: int | None = None,
+                      limit: int | None = None) -> list[list[Any]]:
+    """OHLCV rows from a ccxt exchange, plus taker-buy volume when available (Binance spot)."""
+    market = _binance_spot(exchange, symbol)
+    if market is None:
+        return exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
+    req: dict[str, Any] = {"symbol": market["id"], "interval": exchange.timeframes[timeframe]}
+    if since is not None:
+        req["startTime"] = int(since)
+    if limit:
+        req["limit"] = min(int(limit), 1000)
+    # kline: [open time, open, high, low, close, volume, close time, quote vol, trades, taker buy base, ...]
+    return [[int(k[0]), float(k[1]), float(k[2]), float(k[3]), float(k[4]), float(k[5]), float(k[9])]
+            for k in exchange.publicGetKlines(req)]
+
+
 def fetch_history(exchange: Any, symbol: str, timeframe: str, since: str,
-                  until: str = "", batch: int = 1000) -> pd.DataFrame:
-    """Page through ``exchange.fetch_ohlcv`` (a ccxt exchange) from ``since`` to ``until``."""
+                  until: str = "", batch: int | None = None) -> pd.DataFrame:
+    """Page through the exchange's candles from ``since`` to ``until``."""
+    batch = batch or max_batch(exchange)
     since_ms = int(pd.Timestamp(since, tz="UTC").timestamp() * 1000)
     until_ms = int(pd.Timestamp(until, tz="UTC").timestamp() * 1000) if until else None
     step = timeframe_seconds(timeframe) * 1000
     rows: list[list[Any]] = []
     while True:
-        chunk = exchange.fetch_ohlcv(symbol, timeframe, since=since_ms, limit=batch)
+        chunk = fetch_candles_raw(exchange, symbol, timeframe, since=since_ms, limit=batch)
         if not chunk:
             break
         rows.extend(chunk)
@@ -63,7 +97,8 @@ def load_csv(path: str | Path) -> pd.DataFrame:
         raise ValueError(f"CSV {path} is missing columns: {sorted(missing)}")
     if "volume" not in df:
         df["volume"] = 0.0
-    return df[COLUMNS[1:]].astype(float)
+    cols = COLUMNS[1:] + ([TAKER_BUY] if TAKER_BUY in df else [])
+    return df[cols].astype(float)
 
 
 def synthetic_ohlcv(bars: int = 3000, timeframe: str = "1h", start_price: float = 30_000.0,
@@ -83,15 +118,17 @@ def synthetic_ohlcv(bars: int = 3000, timeframe: str = "1h", start_price: float 
                         index=index.rename("timestamp"))
 
 
-def fetch_recent(exchange: Any, symbol: str, timeframe: str, limit: int, batch: int = 300) -> pd.DataFrame:
+def fetch_recent(exchange: Any, symbol: str, timeframe: str, limit: int,
+                 batch: int | None = None) -> pd.DataFrame:
     """The latest ``limit`` candles, paging forward because exchanges cap each request."""
+    batch = batch or max_batch(exchange)
     step = timeframe_seconds(timeframe) * 1000
     now_ms = time.time() * 1000
     since = int(now_ms - (limit + 1) * step)
     rows: list[list[Any]] = []
     last_seen = None
     while True:
-        chunk = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=batch)
+        chunk = fetch_candles_raw(exchange, symbol, timeframe, since=since, limit=batch)
         if not chunk:
             break
         rows.extend(chunk)
@@ -111,9 +148,9 @@ class CandleCache:
     have been forming when it was stored.
     """
 
-    def __init__(self, exchange: Any, batch: int = 300) -> None:
+    def __init__(self, exchange: Any, batch: int | None = None) -> None:
         self.exchange = exchange
-        self.batch = batch
+        self.batch = batch or max_batch(exchange)
         self._frames: dict[tuple[str, str], pd.DataFrame] = {}
 
     def get(self, symbol: str, timeframe: str, limit: int) -> pd.DataFrame:
@@ -126,7 +163,7 @@ class CandleCache:
             df = fetch_recent(self.exchange, symbol, timeframe, limit, self.batch)
         else:
             since = int(cached.index[-2].timestamp() * 1000)
-            new = ohlcv_to_frame(self.exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=self.batch))
+            new = ohlcv_to_frame(fetch_candles_raw(self.exchange, symbol, timeframe, since, self.batch))
             df = cached if new.empty else pd.concat([cached[cached.index < new.index[0]], new]).tail(limit)
         self._frames[key] = df
         return df

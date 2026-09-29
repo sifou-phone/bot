@@ -18,6 +18,9 @@ class ExchangeConfig:
     api_secret: str = ""
     password: str = ""  # some exchanges (OKX, KuCoin) need a passphrase
     options: dict[str, Any] = field(default_factory=dict)
+    # Public market data endpoint for unauthenticated use (scan, backtest, paper).
+    # "auto": Binance uses data-api.binance.vision (market data only, served in more regions).
+    market_data_url: str = "auto"
 
 
 @dataclass

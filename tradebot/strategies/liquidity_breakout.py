@@ -41,7 +41,15 @@ class LiquidityBreakoutStrategy(Strategy):
         "exit_rvol": 2.5, "exit_clv": -0.5, "flow_exit": -0.25,
         "min_quote_volume": 0.0,
         "momentum_bars": 60, "momentum_min": 0.015, "activity_window": 1440, "activity_min": 1.2,
+        # "candle": flow from where candles close in their range (thresholds above are calibrated
+        # on it); "taker": real taker buy/sell delta where the exchange reports it (Binance).
+        "flow_source": "candle",
     }
+
+    def __init__(self, **params):
+        super().__init__(**params)
+        if self.params["flow_source"] not in ("candle", "taker"):
+            raise ValueError("flow_source must be 'candle' or 'taker'")
 
     @property
     def warmup(self) -> int:
@@ -51,7 +59,7 @@ class LiquidityBreakoutStrategy(Strategy):
 
     def features(self, df: pd.DataFrame) -> pd.DataFrame:
         p = self.params
-        f = liquidity_flow(df, p["vol_period"], p["flow_period"])
+        f = liquidity_flow(df, p["vol_period"], p["flow_period"], p["flow_source"] == "taker")
         lv = resistance_support(df, p["pivot_left"], p["pivot_right"], p["level_lookback"])
         f["resistance"] = lv["resistance"].shift(1)  # the level as known *before* this candle
         f["support"] = lv["support"]

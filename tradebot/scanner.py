@@ -102,7 +102,8 @@ class Scanner:
             return None
         p = self.strategy.params
         n, w = p.get("momentum_bars", 60), p.get("activity_window", 1440)
-        liq = liquidity_flow(df, p.get("vol_period", 20), p.get("flow_period", 10)).iloc[-1]
+        liq = liquidity_flow(df, p.get("vol_period", 20), p.get("flow_period", 10),
+                             p.get("flow_source", "candle") == "taker").iloc[-1]
         lv = resistance_support(df, p.get("pivot_left", 10), p.get("pivot_right", 3),
                                 p.get("level_lookback", 120))
         quote_vol = df["volume"] * df["close"]

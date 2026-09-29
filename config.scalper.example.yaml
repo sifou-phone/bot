@@ -10,7 +10,8 @@ state_file: data/hunter_state.json
 log_file: logs/hunter.log
 
 exchange:
-  name: okx               # binance returns 451 from some regions; okx / kraken / kucoin work
+  name: binance           # public data via data-api.binance.vision; orders need api.binance.com access
+  market_data_url: auto   # auto = data-api.binance.vision for scan / paper / backtest data
   sandbox: true
 
 strategy:
@@ -22,7 +23,7 @@ strategy:
     level_lookback: 120
     # liquidity of each candle
     vol_period: 20        # rvol = candle volume / average of the last 20 candles
-    flow_period: 10       # volume-weighted buy/sell pressure window
+    flow_period: 10       # buy/sell pressure window (real taker delta on Binance)
     rvol_min: 3.0         # breakout candle needs >= 3x normal volume
     clv_min: 0.4          # and must close in the upper part of its range
     flow_min: 0.2         # buyers in control over the last 10 candles
@@ -38,6 +39,7 @@ strategy:
     exit_rvol: 2.5        # heavy selling candle ...
     exit_clv: -0.5        # ... closing near its low
     flow_exit: -0.5       # or flow turns to sellers
+    flow_source: candle   # candle = estimate from candle shape (calibrated) | taker = real Binance taker delta
 
 risk:
   risk_per_trade: 0.005   # a stopped trade loses 0.5% of equity

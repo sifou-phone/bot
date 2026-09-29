@@ -160,3 +160,33 @@ def test_hunter_buys_the_breakout_then_stops_out(market, tmp_path):
     trade = hunter.state.trades[-1]
     assert trade["reason"] == "stop_loss" and trade["symbol"] == "HOT/USDT"
     assert trade["pnl"] > -1_000 * 0.005 * 1.6  # loss stays near the 0.5% risk budget
+
+
+def test_taker_delta_is_the_real_buy_sell_imbalance():
+    df = candles([100] * 30, volumes=[10] * 30)
+    df["taker_buy"] = 8.0  # 8 bought at market, 2 sold -> delta +0.6
+    real = liquidity_flow(df, 20, 5, use_taker=True).iloc[-1]
+    est = liquidity_flow(df, 20, 5, use_taker=False).iloc[-1]
+    assert real["delta"] == pytest.approx(0.6) and real["flow"] == pytest.approx(0.6)
+    assert est["delta"] == pytest.approx(0.0)  # flat candles: shape says nothing
+
+
+def test_binance_candles_carry_taker_volume():
+    from tradebot.data import fetch_candles_raw, ohlcv_to_frame
+
+    class FakeBinance:
+        id = "binance"
+        timeframes = {"1m": "1m"}
+
+        def load_markets(self):
+            return {}
+
+        def market(self, symbol):
+            return {"id": "BTCUSDT", "spot": True}
+
+        def publicGetKlines(self, req):
+            assert req == {"symbol": "BTCUSDT", "interval": "1m", "startTime": 0, "limit": 2}
+            return [[0, "1", "2", "0.5", "1.5", "10", 59999, "15", 7, "6", "9", "0"]]
+
+    df = ohlcv_to_frame(fetch_candles_raw(FakeBinance(), "BTC/USDT", "1m", since=0, limit=2))
+    assert df["taker_buy"].iloc[0] == 6.0 and df["close"].iloc[0] == 1.5

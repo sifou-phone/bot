@@ -36,21 +36,30 @@ def resistance_support(df: pd.DataFrame, left: int = 10, right: int = 3,
     return pd.DataFrame({"resistance": resistance, "support": support})
 
 
-def liquidity_flow(df: pd.DataFrame, vol_period: int = 20, flow_period: int = 10) -> pd.DataFrame:
+def liquidity_flow(df: pd.DataFrame, vol_period: int = 20, flow_period: int = 10,
+                   use_taker: bool = True) -> pd.DataFrame:
     """Liquidity read of every candle.
 
     * ``rvol``  - candle volume relative to the average of the previous ``vol_period`` candles
     * ``clv``   - where the close sits in the candle range: +1 at the high (buyers won), -1 at the low
-    * ``flow``  - volume-weighted buying pressure over ``flow_period`` candles, in [-1, 1]
+    * ``delta`` - buy/sell pressure of the candle in [-1, 1]: the real taker delta
+                  ``(taker buys - taker sells) / volume`` when ``use_taker`` and the exchange
+                  reports taker volume (Binance), otherwise ``clv`` as an estimate
+    * ``flow``  - volume-weighted ``delta`` over ``flow_period`` candles, in [-1, 1]
     * ``quote_volume`` - traded value (volume x close) of the candle
     """
     rng = (df["high"] - df["low"]).replace(0.0, np.nan)
     clv = (((df["close"] - df["low"]) - (df["high"] - df["close"])) / rng).fillna(0.0)
     avg_vol = df["volume"].rolling(vol_period, min_periods=vol_period).mean().shift(1)
     rvol = df["volume"] / avg_vol.replace(0.0, np.nan)
+    delta = clv
+    if use_taker and "taker_buy" in df and df["taker_buy"].notna().any():
+        real = (2 * df["taker_buy"] - df["volume"]) / df["volume"].replace(0.0, np.nan)
+        delta = real.fillna(clv)
     vol_sum = df["volume"].rolling(flow_period, min_periods=flow_period).sum().replace(0.0, np.nan)
-    flow = (clv * df["volume"]).rolling(flow_period, min_periods=flow_period).sum() / vol_sum
-    return pd.DataFrame({"rvol": rvol, "clv": clv, "flow": flow, "quote_volume": df["volume"] * df["close"]})
+    flow = (delta * df["volume"]).rolling(flow_period, min_periods=flow_period).sum() / vol_sum
+    return pd.DataFrame({"rvol": rvol, "clv": clv, "delta": delta, "flow": flow,
+                         "quote_volume": df["volume"] * df["close"]})
 
 
 @dataclass
