@@ -12,8 +12,14 @@ both order books to get the prices the trade would really get, then subtracts:
     most conservative, per-trade view). Only when ``include_withdrawal_fee``;
   * a slippage buffer for latency (books move before the orders land).
 
-A signal is raised only when the net spread >= ``min_net_spread_pct`` and both
-books are fresh.
+A signal is raised only when the net spread >= ``min_net_spread_pct``, both
+books are fresh, and the route is really tradable:
+
+  * the coin can be withdrawn from A and deposited on B, and USDT can travel back
+    (exchanges that publish this, e.g. KuCoin, report suspended transfers; a price
+    gap on a coin nobody can move is not an arbitrage, it cannot be re-balanced);
+  * the gross gap is not above ``max_gross_spread_pct``: such gaps usually mean a
+    halted network, a delisting or two different tokens sharing one ticker.
 """
 
 from __future__ import annotations
@@ -30,8 +36,24 @@ from .storage import Storage
 log = logging.getLogger(__name__)
 
 
+TransferLookup = Callable[[str, str], dict]
+
+
+def route_blocked(settings: Settings, asset: str, buy_ex: str, sell_ex: str, gross_pct: float,
+                  transfers: TransferLookup | None = None) -> str | None:
+    """Reason the route cannot be traded, or None. Unknown transfer status counts as open."""
+    if transfers is not None:
+        for ex, coin, action in ((buy_ex, asset, "withdraw"), (sell_ex, asset, "deposit"),
+                                 (sell_ex, "USDT", "withdraw"), (buy_ex, "USDT", "deposit")):
+            if transfers(ex, coin).get(action) is False:
+                return f"{coin} {action} suspended on {ex}"
+    if gross_pct > settings.max_gross_spread_pct:
+        return f"gap above {settings.max_gross_spread_pct:g}%: suspicious (halted network, delisting or different token)"
+    return None
+
+
 def compute_opportunity(settings: Settings, buy: OrderBook, sell: OrderBook,
-                        now: float | None = None) -> Opportunity | None:
+                        now: float | None = None, transfers: TransferLookup | None = None) -> Opportunity | None:
     """Evaluate buying on ``buy.exchange`` and selling on ``sell.exchange``.
 
     Returns None when either book is empty or too thin for the trade size.
@@ -52,26 +74,29 @@ def compute_opportunity(settings: Settings, buy: OrderBook, sell: OrderBook,
     depth_slippage_pct = max(gross_pct - executable_pct, 0.0)
     fees_pct = (settings.taker_fee(buy.exchange) + settings.taker_fee(sell.exchange)) * 100
     asset = buy.symbol.split("/")[0]
-    rebalance_cost = settings.withdrawal_fee(asset) * sell_vwap + settings.withdrawal_fee("USDT")
+    rebalance_cost = settings.withdrawal_cost_usdt(asset, sell_vwap) + settings.withdrawal_cost_usdt("USDT", 1.0)
     withdrawal_pct = (rebalance_cost / max(settings.rebalance_batch_usdt, notional) * 100
                       if settings.include_withdrawal_fee else 0.0)
     slippage_pct = depth_slippage_pct + settings.slippage_buffer_pct
     net_pct = gross_pct - fees_pct - withdrawal_pct - slippage_pct
+    blocked = route_blocked(settings, asset, buy.exchange, sell.exchange, gross_pct, transfers)
     return Opportunity(
         symbol=buy.symbol, buy_exchange=buy.exchange, sell_exchange=sell.exchange,
         buy_price=best_ask, sell_price=best_bid, buy_vwap=buy_vwap, sell_vwap=sell_vwap,
         base_amount=base, notional=notional, gross_pct=gross_pct, fees_pct=fees_pct,
         withdrawal_pct=withdrawal_pct, slippage_pct=slippage_pct, net_pct=net_pct,
         net_profit_usdt=net_pct / 100 * notional, detected_at=now or time.time(),
-        actionable=net_pct >= settings.min_net_spread_pct,
+        actionable=net_pct >= settings.min_net_spread_pct and blocked is None, blocked=blocked,
     )
 
 
 class ArbitrageDetector:
     def __init__(self, settings: Settings, books: Callable[[str], list[OrderBook]], storage: Storage | None = None,
-                 on_signal: Callable[[Opportunity], Awaitable[None] | None] | None = None) -> None:
+                 on_signal: Callable[[Opportunity], Awaitable[None] | None] | None = None,
+                 transfers: TransferLookup | None = None) -> None:
         self.settings = settings
         self._books = books
+        self._transfers = transfers
         self.storage = storage
         self.on_signal = on_signal
         self.latest: dict[tuple[str, str, str], Opportunity] = {}  # every pair, for the dashboard
@@ -88,7 +113,7 @@ class ArbitrageDetector:
         actionable = []
         for buy in books:
             for sell in books:
-                opp = compute_opportunity(self.settings, buy, sell, now)
+                opp = compute_opportunity(self.settings, buy, sell, now, self._transfers)
                 if opp is None:
                     continue
                 seen.add(opp.key)

@@ -106,6 +106,9 @@ class Settings:
     slippage_buffer_pct: float = 0.05
     include_withdrawal_fee: bool = True
     rebalance_batch_usdt: float = 2_000.0  # traded volume between two inventory re-balances
+    default_withdrawal_fee_usdt: float = 1.0  # for coins not listed in WITHDRAWAL_FEES
+    max_gross_spread_pct: float = 3.0  # larger gaps are treated as suspicious, never traded
+    transfer_refresh_minutes: float = 30.0  # how often deposit/withdraw status is re-read
     max_quote_age_ms: float = 3000.0
     order_book_depth: int = 20
     price_tolerance_pct: float = 0.2  # IOC limit price allowance beyond the quoted price
@@ -146,6 +149,9 @@ class Settings:
             slippage_buffer_pct=_float("SLIPPAGE_BUFFER_PCT", 0.05),
             include_withdrawal_fee=_bool("INCLUDE_WITHDRAWAL_FEE", True),
             rebalance_batch_usdt=_float("REBALANCE_BATCH_USDT", 2_000),
+            default_withdrawal_fee_usdt=_float("DEFAULT_WITHDRAWAL_FEE_USDT", 1.0),
+            max_gross_spread_pct=_float("MAX_GROSS_SPREAD_PCT", 3.0),
+            transfer_refresh_minutes=_float("TRANSFER_REFRESH_MINUTES", 30),
             max_quote_age_ms=_float("MAX_QUOTE_AGE_MS", 3000),
             order_book_depth=int(_float("ORDER_BOOK_DEPTH", 20)),
             price_tolerance_pct=_float("PRICE_TOLERANCE_PCT", 0.2),
@@ -181,6 +187,10 @@ class Settings:
             errors.append("MIN_NET_SPREAD_PCT must be >= 0")
         if self.trade_size_usdt <= 0:
             errors.append("TRADE_SIZE_USDT must be > 0")
+        if self.max_gross_spread_pct <= 0:
+            errors.append("MAX_GROSS_SPREAD_PCT must be > 0")
+        if self.default_withdrawal_fee_usdt < 0:
+            errors.append("DEFAULT_WITHDRAWAL_FEE_USDT must be >= 0")
         if self.rebalance_batch_usdt <= 0:
             errors.append("REBALANCE_BATCH_USDT must be > 0")
         if not 0 <= self.paper_fail_rate <= 1:
@@ -194,6 +204,16 @@ class Settings:
     def withdrawal_fee(self, asset: str) -> float:
         return float(self.withdrawal_fees.get(asset, 0.0))
 
+    def withdrawal_cost_usdt(self, asset: str, price: float) -> float:
+        """Cost of withdrawing ``asset`` once, in USDT.
+
+        Coins missing from WITHDRAWAL_FEES get DEFAULT_WITHDRAWAL_FEE_USDT instead of zero,
+        so an unknown fee never makes a spread look more profitable than it is.
+        """
+        if asset in self.withdrawal_fees:
+            return float(self.withdrawal_fees[asset]) * (1.0 if asset == "USDT" else price)
+        return self.default_withdrawal_fee_usdt
+
     def public_dict(self) -> dict[str, Any]:
         """Settings safe to show on the dashboard: no secrets, only whether keys exist."""
         return {
@@ -201,6 +221,8 @@ class Settings:
             "min_net_spread_pct": self.min_net_spread_pct, "trade_size_usdt": self.trade_size_usdt,
             "slippage_buffer_pct": self.slippage_buffer_pct, "include_withdrawal_fee": self.include_withdrawal_fee,
             "rebalance_batch_usdt": self.rebalance_batch_usdt,
+            "default_withdrawal_fee_usdt": self.default_withdrawal_fee_usdt,
+            "max_gross_spread_pct": self.max_gross_spread_pct,
             "max_quote_age_ms": self.max_quote_age_ms, "cooldown_seconds": self.cooldown_seconds,
             "max_daily_loss_usdt": self.max_daily_loss_usdt, "taker_fees": self.taker_fees,
             "withdrawal_fees": self.withdrawal_fees,

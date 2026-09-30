@@ -303,7 +303,7 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin: 16px 
 
   function renderKpis(s) {
     var best = null;
-    (s.spreads || []).forEach(function (o) { if (!best || o.net_pct > best.net_pct) best = o; });
+    (s.spreads || []).forEach(function (o) { if (!o.blocked && (!best || o.net_pct > best.net_pct)) best = o; });
     $("k-best").textContent = best ? pct(best.net_pct, true) : "—";
     $("k-best").className = best ? cls(best.net_pct) : "";
     $("kpi-best").classList.toggle("good", !!(best && best.actionable));
@@ -329,7 +329,12 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin: 16px 
         '<div class="muted" style="font-size:12.5px">تحديثات: ' + num(String(e.updates || 0)) + " · " + (e.symbols || []).length + " أزواج · " + keys + "</div>" +
         (e.error && !e.connected ? '<div class="err">' + esc(e.error) + "</div>" : "") + "</div>";
     }).join("");
-    $("exchanges").innerHTML = html || '<div class="empty">—</div>';
+    var sus = (s.suspended || []).map(function (x) {
+      var what = x.deposit === false && x.withdraw === false ? "الإيداع والسحب" : x.deposit === false ? "الإيداع" : "السحب";
+      return "<li>" + num(esc(x.coin)) + " على " + exName(x.exchange) + ": " + what + " موقوف</li>";
+    });
+    $("exchanges").innerHTML = (html || '<div class="empty">—</div>') + (sus.length
+      ? '<div class="blockers" style="grid-column:1/-1"><b>⛔ تحويلات موقوفة (المسارات التي تحتاجها محظورة):</b><ul style="margin:4px 0 0;padding-inline-start:18px">' + sus.join("") + "</ul></div>" : "");
   }
 
   function renderQuotes(s) {
@@ -371,7 +376,8 @@ footer { color: var(--muted); font-size: 12px; text-align: center; margin: 16px 
         "<td>" + num("−" + o.fees_pct.toFixed(3) + "%") + "</td>" +
         "<td>" + num("−" + o.withdrawal_pct.toFixed(3) + "%") + "</td>" +
         "<td>" + num("−" + o.slippage_pct.toFixed(3) + "%") + "</td>" +
-        '<td class="best ' + cls(o.net_pct) + '">' + (o.actionable ? "✓ " : "") + num(pct(o.net_pct, true)) + "</td>" +
+        '<td class="best ' + (o.blocked ? "" : cls(o.net_pct)) + '">' + (o.actionable ? "✓ " : "") + num(pct(o.net_pct, true)) +
+          (o.blocked ? '<br><span class="badge warn" title="' + esc(o.blocked) + '">⛔ غير قابل للتنفيذ</span><br><span class="muted" style="font-size:11.5px;white-space:normal;direction:ltr;display:inline-block;max-width:260px">' + esc(o.blocked) + "</span>" : "") + "</td>" +
         '<td class="' + cls(o.net_profit_usdt) + '">' + num(money(o.net_profit_usdt, true)) + '<br><span class="muted">على ' + num(money(o.notional)) + "</span></td></tr>";
     }).join("");
   }

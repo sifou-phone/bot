@@ -30,7 +30,8 @@ class ArbBot:
         self.storage = storage or Storage(settings.db_path)
         self.service = service or ExchangeService(settings)
         self.service.on_update = self._on_book_update
-        self.detector = ArbitrageDetector(settings, self.service.fresh_books, self.storage, self._on_signal)
+        self.detector = ArbitrageDetector(settings, self.service.fresh_books, self.storage, self._on_signal,
+                                          self.service.transfer_status)
         self.paper_brokers = {ex: PaperBroker(ex, settings, self.service.book) for ex in settings.exchanges}
         self.executor = Executor(settings, self.storage, dict(self.paper_brokers), "paper", on_kill=self._on_kill)
         self.mode = "paper"
@@ -200,6 +201,8 @@ class ArbBot:
             "exchanges": {ex: {**s, "symbols": sorted(self.service.markets.get(ex, []))}
                           for ex, s in self.service.status.items()},
             "quotes": quotes,
+            "suspended": [{"exchange": ex, "coin": coin, **st} for (ex, coin), st in sorted(self.service.transfers.items())
+                          if False in st.values()],
             "spreads": self.detector.spreads(),
             "opportunities": self.storage.recent_opportunities(50),
             "executions": self.storage.recent_executions(50),

@@ -217,3 +217,39 @@ def test_paper_end_to_end_execution_changes_balances():
     row = store.recent_executions()[0]
     assert row["status"] == "filled" and row["pnl_usdt"] > 0
     assert brokers["a"].assets["BTC"] > brokers["b"].assets["BTC"]  # coin moved from b's inventory to a's
+
+
+def test_unknown_coin_withdrawal_is_never_free():
+    s = settings(include_withdrawal_fee=True, withdrawal_fees={"USDT": 1.0}, rebalance_batch_usdt=1000,
+                 default_withdrawal_fee_usdt=2.0)
+    wif = lambda ex, bid, ask: OrderBook(ex, "WIF/USDT", [(bid, 5000)], [(ask, 5000)], time.time())
+    opp = compute_opportunity(s, wif("a", 0.99, 1.0), wif("b", 1.02, 1.03))
+    assert opp.withdrawal_pct == pytest.approx((2.0 + 1.0) / 1000 * 100)  # default for WIF + USDT
+
+
+def test_route_with_suspended_transfers_is_blocked():
+    s = settings()
+    status = {("a", "BTC"): {"deposit": False, "withdraw": False}}
+    transfers = lambda ex, coin: status.get((ex, coin), {})
+    opp = compute_opportunity(s, book("a", 99, 100), book("b", 101, 102), transfers=transfers)
+    assert opp.net_pct > s.min_net_spread_pct and not opp.actionable
+    assert opp.blocked == "BTC withdraw suspended on a"
+    back = compute_opportunity(s, book("b", 99, 100), book("a", 101, 102), transfers=transfers)
+    assert back.blocked == "BTC deposit suspended on a"
+    assert compute_opportunity(s, book("a", 99, 100), book("b", 101, 102),
+                               transfers=lambda ex, coin: {}).actionable  # unknown status = open
+
+
+def test_suspicious_gap_is_never_traded():
+    s = settings(max_gross_spread_pct=3.0)
+    opp = compute_opportunity(s, book("a", 99, 100), book("b", 113, 114))  # a 13% "opportunity"
+    assert opp.net_pct > 10 and not opp.actionable and "suspicious" in opp.blocked
+
+
+def test_detector_does_not_signal_blocked_routes():
+    s = settings()
+    books = [book("a", 99, 100), book("b", 101, 102)]
+    det = ArbitrageDetector(s, lambda sym: books,
+                            transfers=lambda ex, coin: {"withdraw": False} if ex == "a" else {})
+    assert det.evaluate("BTC/USDT") == []
+    assert any(o.blocked for o in det.latest.values())

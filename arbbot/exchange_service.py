@@ -61,6 +61,8 @@ class ExchangeService:
         self.clients: dict[str, Any] = {}
         self.books: dict[tuple[str, str], OrderBook] = {}
         self.markets: dict[str, set[str]] = {}
+        # (exchange, coin) -> {"deposit": bool | None, "withdraw": bool | None}; None = not published
+        self.transfers: dict[tuple[str, str], dict[str, bool | None]] = {}
         self.status: dict[str, dict[str, Any]] = {
             ex: {"connected": False, "error": None, "updates": 0, "last_update": None} for ex in settings.exchanges}
         self._tasks: list[asyncio.Task] = []
@@ -101,10 +103,12 @@ class ExchangeService:
                 await client.load_markets()
                 available = {s for s in self.settings.symbols if s in client.markets}
                 self.markets[name] = available
+                self._read_transfers(name, client)
                 missing = set(self.settings.symbols) - available
                 if missing:
                     log.warning("%s does not list %s", name, sorted(missing))
-                await asyncio.gather(*(self._watch(name, client, sym) for sym in available))
+                await asyncio.gather(self._refresh_transfers(name, client),
+                                     *(self._watch(name, client, sym) for sym in available))
                 return
             except asyncio.CancelledError:
                 raise
@@ -114,6 +118,31 @@ class ExchangeService:
                 await self._close(name)
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, 60)
+
+    def _read_transfers(self, name: str, client: Any) -> None:
+        coins = {s.split("/")[0] for s in self.settings.symbols} | {"USDT"}
+        for coin in coins:
+            cur = (client.currencies or {}).get(coin) or {}
+            status = {"deposit": cur.get("deposit"), "withdraw": cur.get("withdraw")}
+            old = self.transfers.get((name, coin))
+            self.transfers[(name, coin)] = status
+            if False in status.values() and old != status:
+                log.warning("%s: %s transfers suspended %s; routes needing them are blocked", name, coin, status)
+
+    async def _refresh_transfers(self, name: str, client: Any) -> None:
+        """Re-read deposit/withdraw status periodically (REST; it is account metadata, not prices)."""
+        while self.running:
+            await asyncio.sleep(self.settings.transfer_refresh_minutes * 60)
+            try:
+                client.currencies = await client.fetch_currencies() or client.currencies
+                self._read_transfers(name, client)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - many exchanges publish this only with API keys
+                log.debug("%s: transfer status not available: %s", name, exc)
+
+    def transfer_status(self, exchange: str, coin: str) -> dict[str, bool | None]:
+        return self.transfers.get((exchange, coin), {})
 
     async def _watch(self, name: str, client: Any, symbol: str) -> None:
         delay = 1.0

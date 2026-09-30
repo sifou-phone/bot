@@ -77,6 +77,7 @@ class Opportunity:
     net_profit_usdt: float
     detected_at: float = field(default_factory=time.time)
     actionable: bool = False
+    blocked: str | None = None  # why the route cannot be traded despite the numbers
     id: int | None = None
 
     @property
@@ -87,4 +88,4 @@ class Opportunity:
         return {k: getattr(self, k) for k in (
             "id", "symbol", "buy_exchange", "sell_exchange", "buy_price", "sell_price", "buy_vwap",
             "sell_vwap", "base_amount", "notional", "gross_pct", "fees_pct", "withdrawal_pct",
-            "slippage_pct", "net_pct", "net_profit_usdt", "detected_at", "actionable")}
+            "slippage_pct", "net_pct", "net_profit_usdt", "detected_at", "actionable", "blocked")}
