@@ -1,5 +1,7 @@
 # TradeBot — بوت تداول عملات رقمية
 
+> **جديد: [ArbBot — بوت المراجحة بين المنصات](arbbot/README.md)**. يراقب Binance وOKX وKuCoin (وBybit) عبر WebSocket، ويكتشف فروق الأسعار بعد خصم كل التكاليف، ويعرض كل شيء على لوحة تحكم محلية على `http://127.0.0.1:8000`. التشغيل: `python -m arbbot`.
+
 بوت تداول مكتوب بلغة Python، مقسَّم إلى وحدات مستقلة. يدعم **الاختبار التاريخي (Backtest)** و**التداول الورقي (Paper)** و**التداول الحقيقي (Live)**
 على أي منصة تدعمها مكتبة [ccxt](https://github.com/ccxt/ccxt) (Binance, Bybit, OKX, Kraken, KuCoin …).
 
