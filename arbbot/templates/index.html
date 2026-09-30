@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لوحة المراجحة</title>
+<link rel="icon" href="data:,">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #f1f1ee;
+  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --border: rgba(11, 11, 11, 0.10);
+  --accent: #2a78d6;
+  --good: #0ca30c; --good-text: #006300; --good-bg: rgba(12, 163, 12, 0.10);
+  --warning: #fab219; --warn-bg: rgba(250, 178, 25, 0.16);
+  --critical: #d03b3b; --critical-text: #b42f2f; --critical-bg: rgba(208, 59, 59, 0.10);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5;
+    --good-text: #0ca30c; --good-bg: rgba(12, 163, 12, 0.18);
+    --warn-bg: rgba(250, 178, 25, 0.14);
+    --critical-text: #e66767; --critical-bg: rgba(208, 59, 59, 0.20);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --surface-2: #242422;
+  --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --border: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5;
+  --good-text: #0ca30c; --good-bg: rgba(12, 163, 12, 0.18);
+  --warn-bg: rgba(250, 178, 25, 0.14);
+  --critical-text: #e66767; --critical-bg: rgba(208, 59, 59, 0.20);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px; }
+header { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
+.chip.paper { background: var(--good-bg); color: var(--good-text); border-color: transparent; font-weight: 600; }
+.chip.live { background: var(--critical); color: #fff; border-color: transparent; font-weight: 700; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--good); box-shadow: 0 0 0 3px rgba(12, 163, 12, 0.18); }
+.dot.off { background: var(--critical); }
+.dot.wait { background: var(--warning); }
+button { font: inherit; cursor: pointer; border-radius: 8px; padding: 7px 14px; border: 1px solid var(--border); background: var(--surface); color: var(--ink); }
+button:hover { filter: brightness(0.97); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button.primary { background: var(--accent); color: #fff; border-color: transparent; }
+button.kill { background: var(--critical); color: #fff; border-color: transparent; font-weight: 700; padding: 8px 18px; }
+button.small { padding: 3px 10px; font-size: 13px; }
+.banner { display: none; margin-bottom: 12px; padding: 12px 16px; border-radius: var(--radius); font-weight: 600; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.banner.show { display: flex; }
+.banner.kill { background: var(--critical-bg); color: var(--critical-text); }
+.banner.live { background: var(--critical); color: #fff; }
+.grid { display: grid; gap: 12px; margin-bottom: 12px; }
+.kpis { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.two { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+@media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
+.kpi .label { color: var(--ink-2); font-size: 13px; }
+.kpi .value { font-size: 24px; font-weight: 650; margin-top: 2px; }
+.kpi .sub { color: var(--muted); font-size: 12.5px; }
+.kpi.good { background: var(--good-bg); border-color: transparent; }
+.num { direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.up { color: var(--good-text); } .down { color: var(--critical-text); } .muted { color: var(--muted); }
+.hint { color: var(--muted); font-size: 12.5px; margin: -4px 0 10px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { color: var(--ink-2); font-weight: 600; text-align: start; padding: 6px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr:last-child td { border-bottom: 0; }
+tr.opp td { background: var(--good-bg); }
+tr.opp td:first-child { box-shadow: inset -3px 0 0 var(--good); }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+.badge.good { background: var(--good-bg); color: var(--good-text); }
+.badge.bad { background: var(--critical-bg); color: var(--critical-text); }
+.badge.warn { background: var(--warn-bg); color: var(--ink); }
+.badge.calm { background: var(--surface-2); color: var(--muted); }
+.ex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.ex { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.ex .name { font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.ex .err { color: var(--critical-text); font-size: 12px; margin-top: 4px; direction: ltr; text-align: left; word-break: break-word; }
+.best { font-weight: 700; }
+.bal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.events { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+.events li { padding: 6px 0; border-bottom: 1px solid var(--grid); font-size: 13px; display: flex; gap: 10px; }
+.events li:last-child { border-bottom: 0; }
+.empty { color: var(--muted); text-align: center; padding: 16px 0; }
+dialog { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--ink); max-width: 460px; width: calc(100% - 32px); padding: 20px; }
+dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+dialog h3 { margin: 0 0 8px; }
+dialog label { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; }
+dialog input[type=text] { width: 100%; font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--page); color: var(--ink); direction: ltr; }
+.err-msg { color: var(--critical-text); font-size: 13px; min-height: 1.2em; }
+.blockers { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+footer { color: var(--muted); font-size: 12px; text-align: center; margin: 16px 0 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="row">
+      <h1>لوحة المراجحة بين المنصات</h1>
+      <span class="chip" id="mode-chip">—</span>
+      <span class="chip"><span class="dot wait" id="mon-dot"></span><span id="mon-text">…</span></span>
+      <span class="chip"><span class="dot wait" id="conn-dot"></span><span id="conn-text">جارٍ الاتصال</span></span>
+    </div>
+    <div class="row">
+      <button id="btn-start" class="primary" type="button">▶ بدء المراقبة</button>
+      <button id="btn-stop" type="button">⏸ إيقاف المراقبة</button>
+      <button id="btn-mode" type="button">⇄ تبديل الوضع</button>
+      <button id="btn-kill" class="kill" type="button">⛔ إيقاف طارئ</button>
+      <button id="btn-theme" class="small" type="button" aria-label="تبديل المظهر">◐</button>
+    </div>
+  </header>
+
+  <div class="banner live" id="live-banner">⚠ وضع التداول الحقيقي مفعّل — الأوامر تُرسل إلى المنصات بأموال حقيقية.</div>
+  <div class="banner kill" id="kill-banner">
+    <span id="kill-text">⛔ الإيقاف الطارئ مفعّل</span>
+    <button class="small" id="btn-reset" type="button">إعادة تفعيل التداول</button>
+  </div>
+
+  <section class="grid kpis">
+    <div class="card kpi" id="kpi-best"><div class="label">أفضل فارق صافٍ الآن</div><div class="value"><span class="num" id="k-best">—</span></div><div class="sub" id="k-best-sub">—</div></div>
+    <div class="card kpi"><div class="label">فرص مسجّلة</div><div class="value"><span class="num" id="k-opps">—</span></div><div class="sub" id="k-opps-sub">—</div></div>
+    <div class="card kpi"><div class="label">صفقات منفّذة</div><div class="value"><span class="num" id="k-exec">—</span></div><div class="sub" id="k-exec-sub">—</div></div>
+    <div class="card kpi"><div class="label">الربح الإجمالي</div><div class="value"><span class="num" id="k-pnl">—</span></div><div class="sub" id="k-pnl-sub">—</div></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>المنصات</h2>
+    <div class="ex-grid" id="exchanges"></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>الفوارق الحالية وتقدير الربح</h2>
+    <p class="hint">أفضل اتجاه لكل عملة. الأخضر = فرصة تتجاوز العتبة <span class="num" id="threshold">—</span>، والأحمر = خسارة. الصافي = الإجمالي − الرسوم − السحب − الانزلاق.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>العملة</th><th>اشترِ من</th><th>بِع في</th><th>الفارق الإجمالي</th><th>الرسوم</th><th>السحب</th><th>الانزلاق</th><th>الفارق الصافي</th><th>الربح المتوقع</th></tr></thead>
+      <tbody id="spreads"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>الأسعار اللحظية</h2>
+    <p class="hint">في كل خانة: <b>تبيع بـ</b> (bid، أعلى سعر يدفعه مشترٍ) / <b>تشتري بـ</b> (ask، أرخص سعر يعرضه بائع). الأفضل لكل عملة بالأخضر العريض، والسعر القديم بالأحمر.</p>
+    <div class="table-wrap"><table>
+      <thead id="quotes-head"></thead>
+      <tbody id="quotes"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>سجل فرص المراجحة</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>الوقت</th><th>الزوج</th><th>منصة الشراء</th><th>منصة البيع</th><th>الفارق الإجمالي</th><th>الفارق الصافي</th><th>الربح المتوقع</th><th>نُفّذت؟</th></tr></thead>
+      <tbody id="opps"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" style="margin-bottom:12px">
+    <h2>الصفقات المنفّذة</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>الوقت</th><th>الوضع</th><th>الزوج</th><th>المسار</th><th>النتيجة</th><th>الكمية (شراء / بيع)</th><th>الرسوم</th><th>الربح</th></tr></thead>
+      <tbody id="execs"></tbody>
+    </table></div>
+  </section>
+
+  <section class="grid two">
+    <div class="card">
+      <h2>الأرصدة والمراكز <span class="muted" id="bal-at" style="font-weight:400;font-size:12.5px"></span></h2>
+      <p class="hint">لقطة للقراءة فقط. المراجحة تحتاج رصيداً من USDT على منصة الشراء، ومن العملة نفسها على منصة البيع.</p>
+      <div id="positions"></div>
+      <div class="bal-grid" id="balances"></div>
+    </div>
+    <div class="card">
+      <h2>الأحداث</h2>
+      <ul class="events" id="events"></ul>
+      <h2 style="margin-top:14px">الإعدادات</h2>
+      <div id="settings" class="muted" style="font-size:13px"></div>
+    </div>
+  </section>
+
+  <footer>تعمل محلياً على http://127.0.0.1:8000 — مفاتيح API لا تظهر هنا أبداً.</footer>
+</div>
+
+<dialog id="mode-dialog">
+  <h3 id="md-title">تبديل الوضع</h3>
+  <div id="md-body"></div>
+  <div class="err-msg" id="md-err"></div>
+  <div class="row" style="justify-content:flex-end;margin-top:12px">
+    <button type="button" id="md-cancel">إلغاء</button>
+    <button type="button" id="md-ok" class="primary">تأكيد</button>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var S = null;
+  var STATUS = {
+    filled: ["good", "✓ نُفّذت بالكامل"],
+    partial_hedged: ["warn", "◐ جزئية وتمت التغطية"],
+    one_leg_unwound: ["warn", "↺ فشل طرف وأُلغي الآخر"],
+    not_filled: ["calm", "– لم تُنفّذ"],
+    hedge_failed: ["bad", "⚠ فشل التغطية"]
+  };
+
+  // ---------------- helpers ----------------
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function isNum(v) { return typeof v === "number" && isFinite(v); }
+  function num(h) { return '<span class="num">' + h + "</span>"; }
+  function price(v) { if (!isNum(v)) return "—"; return v >= 1000 ? v.toLocaleString("en-US", { maximumFractionDigits: 2 }) : Number(v.toPrecision(6)).toString(); }
+  function pct(v, sign) { if (!isNum(v)) return "—"; return (v < 0 ? "−" : sign && v > 0 ? "+" : "") + Math.abs(v).toFixed(3) + "%"; }
+  function money(v, sign) { if (!isNum(v)) return "—"; return (v < 0 ? "−" : sign && v > 0 ? "+" : "") + Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }) + "$"; }
+  function cls(v) { return !isNum(v) || v === 0 ? "" : v > 0 ? "up" : "down"; }
+  function time(ts) { if (!isNum(ts)) return "—"; return new Date(ts * 1000).toLocaleString("ar", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+  function ageText(ms) { if (!isNum(ms)) return "—"; return ms < 1000 ? Math.round(ms) + " مللي ث" : (ms / 1000).toFixed(1) + " ث"; }
+  var NAMES = { binance: "Binance", okx: "OKX", bybit: "Bybit", kucoin: "KuCoin" };
+  function exName(e) { return '<span class="num">' + esc(NAMES[e] || e) + "</span>"; }
+
+  // ---------------- theme ----------------
+  function applyTheme(t) { if (t) document.documentElement.setAttribute("data-theme", t); else document.documentElement.removeAttribute("data-theme"); }
+  try { applyTheme(localStorage.getItem("arb-theme")); } catch (e) {}
+  $("btn-theme").onclick = function () {
+    var dark = getComputedStyle(document.documentElement).colorScheme.indexOf("dark") >= 0;
+    applyTheme(dark ? "light" : "dark");
+    try { localStorage.setItem("arb-theme", dark ? "light" : "dark"); } catch (e) {}
+  };
+
+  // ---------------- actions ----------------
+  function post(path, body) {
+    return fetch(path, { method: "POST", headers: { "Content-Type": "application/json", "X-ArbBot-Action": "1" }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.detail || r.status); return j; }); });
+  }
+  function busy(btn, p) { btn.disabled = true; return p.catch(function (e) { alert(e.message); }).then(function () { btn.disabled = false; refresh(); }); }
+  $("btn-start").onclick = function () { busy(this, post("/api/monitor/start")); };
+  $("btn-stop").onclick = function () { busy(this, post("/api/monitor/stop")); };
+  $("btn-kill").onclick = function () { busy(this, post("/api/kill", { reason: "إيقاف طارئ يدوي من اللوحة" })); };
+  $("btn-reset").onclick = function () {
+    if (confirm("إعادة تفعيل التداول بعد الإيقاف الطارئ؟ تأكد أولاً من المراكز والأرصدة.")) busy(this, post("/api/kill/reset"));
+  };
+
+  // Mode switch: live needs two separate confirmations (checkbox + typed phrase).
+  var dlg = $("mode-dialog");
+  $("btn-mode").onclick = function () {
+    if (!S) return;
+    $("md-err").textContent = "";
+    if (S.mode === "live") {
+      $("md-title").textContent = "العودة إلى وضع المحاكاة";
+      $("md-body").innerHTML = "<p>سيتوقف إرسال الأوامر الحقيقية، وستُنفّذ الصفقات بأموال وهمية.</p>";
+      $("md-ok").textContent = "التبديل إلى المحاكاة";
+      $("md-ok").onclick = function () { post("/api/mode", { mode: "paper" }).then(function () { dlg.close(); refresh(); }).catch(function (e) { $("md-err").textContent = e.message; }); };
+    } else {
+      var blockers = S.live_blockers || [];
+      $("md-title").textContent = "⚠ التبديل إلى التداول الحقيقي";
+      $("md-body").innerHTML =
+        (blockers.length ? '<div class="blockers"><b>لا يمكن التفعيل الآن:</b><ul style="margin:6px 0 0;padding-inline-start:18px">' +
+          blockers.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") + "</ul></div>" : "") +
+        "<p>سيرسل البوت أوامر شراء وبيع حقيقية بأموالك على كل المنصات. شغّل وضع المحاكاة أسبوعاً على الأقل قبل هذه الخطوة.</p>" +
+        '<label><input type="checkbox" id="md-check"> <span>التأكيد الأول: أفهم أن الأوامر حقيقية وأنني قد أخسر المال بسبب الرسوم والانزلاق.</span></label>' +
+        '<div>التأكيد الثاني: اكتب <b class="num">' + esc(S.live_confirm_phrase) + "</b> في الخانة:</div>" +
+        '<input type="text" id="md-phrase" autocomplete="off" spellcheck="false">';
+      $("md-ok").textContent = "تفعيل التداول الحقيقي";
+      $("md-ok").onclick = function () {
+        post("/api/mode", { mode: "live", confirm: $("md-check").checked, phrase: $("md-phrase").value })
+          .then(function () { dlg.close(); refresh(); })
+          .catch(function (e) { $("md-err").textContent = e.message; });
+      };
+    }
+    dlg.showModal();
+  };
+  $("md-cancel").onclick = function () { dlg.close(); };
+
+  // ---------------- rendering ----------------
+  function renderHeader(s) {
+    var mc = $("mode-chip");
+    mc.className = "chip " + (s.mode === "live" ? "live" : "paper");
+    mc.textContent = s.mode === "live" ? "⚠ تداول حقيقي" : "✓ وضع المحاكاة";
+    $("mon-dot").className = "dot " + (s.monitoring ? "on" : "off");
+    $("mon-text").textContent = s.monitoring ? "المراقبة تعمل" : "المراقبة متوقفة";
+    $("btn-start").disabled = s.monitoring;
+    $("btn-stop").disabled = !s.monitoring;
+    $("btn-kill").disabled = s.killed;
+    $("live-banner").classList.toggle("show", s.mode === "live");
+    $("kill-banner").classList.toggle("show", !!s.killed);
+    if (s.killed) $("kill-text").textContent = "⛔ الإيقاف الطارئ مفعّل — لا تُرسل أي أوامر. السبب: " + (s.kill_reason || "");
+    $("threshold").textContent = pct(s.settings.min_net_spread_pct);
+  }
+
+  function renderKpis(s) {
+    var best = null;
+    (s.spreads || []).forEach(function (o) { if (!o.blocked && (!best || o.net_pct > best.net_pct)) best = o; });
+    $("k-best").textContent = best ? pct(best.net_pct, true) : "—";
+    $("k-best").className = best ? cls(best.net_pct) : "";
+    $("kpi-best").classList.toggle("good", !!(best && best.actionable));
+    $("k-best-sub").innerHTML = best ? num(esc(best.symbol)) + " · اشترِ " + exName(best.buy_exchange) + " ← بِع " + exName(best.sell_exchange) : "بانتظار الأسعار";
+    var st = s.stats || {};
+    $("k-opps").textContent = st.actionable != null ? String(st.actionable) : "—";
+    $("k-opps-sub").textContent = "إشارات منذ التشغيل: " + (st.signals || 0);
+    $("k-exec").textContent = String(st.executions || 0);
+    $("k-exec-sub").innerHTML = "ربح اليوم " + '<span class="num ' + cls(st.day_pnl) + '">' + money(st.day_pnl, true) + "</span>";
+    $("k-pnl").textContent = money(st.total_pnl, true);
+    $("k-pnl").className = cls(st.total_pnl);
+    $("k-pnl-sub").textContent = s.mode === "live" ? "يشمل الصفقات الورقية والحقيقية" : "صفقات المحاكاة";
+  }
+
+  function renderExchanges(s) {
+    var html = Object.keys(s.exchanges || {}).map(function (name) {
+      var e = s.exchanges[name];
+      var dot = e.connected ? "on" : e.error ? "off" : "wait";
+      var label = e.connected ? "متصلة" : e.error ? "غير متصلة" : "جارٍ الاتصال";
+      var keys = s.settings.api_keys[name] ? "✓ مفتاح API موجود" : "— بلا مفتاح (محاكاة فقط)";
+      return '<div class="ex"><div class="name"><span class="dot ' + dot + '"></span>' + exName(name) +
+        ' <span class="muted" style="font-weight:400;font-size:12.5px">' + label + "</span></div>" +
+        '<div class="muted" style="font-size:12.5px">تحديثات: ' + num(String(e.updates || 0)) + " · " + (e.symbols || []).length + " أزواج · " + keys + "</div>" +
+        (e.error && !e.connected ? '<div class="err">' + esc(e.error) + "</div>" : "") + "</div>";
+    }).join("");
+    var sus = (s.suspended || []).map(function (x) {
+      var what = x.deposit === false && x.withdraw === false ? "الإيداع والسحب" : x.deposit === false ? "الإيداع" : "السحب";
+      return "<li>" + num(esc(x.coin)) + " على " + exName(x.exchange) + ": " + what + " موقوف</li>";
+    });
+    $("exchanges").innerHTML = (html || '<div class="empty">—</div>') + (sus.length
+      ? '<div class="blockers" style="grid-column:1/-1"><b>⛔ تحويلات موقوفة (المسارات التي تحتاجها محظورة):</b><ul style="margin:4px 0 0;padding-inline-start:18px">' + sus.join("") + "</ul></div>" : "");
+  }
+
+  function renderQuotes(s) {
+    var rows = s.quotes || [];
+    var exs = (s.settings.exchanges || []).slice();
+    $("quotes-head").innerHTML = "<tr><th>العملة</th>" + exs.map(function (e) { return "<th>" + exName(e) + "</th>"; }).join("") + "</tr>";
+    if (!rows.length) { $("quotes").innerHTML = '<tr><td colspan="' + (exs.length + 1) + '" class="empty">' + (s.monitoring ? "بانتظار أول الأسعار…" : "المراقبة متوقفة") + "</td></tr>"; return; }
+    var by = {}, bestBid = {}, bestAsk = {};
+    rows.forEach(function (q) {
+      (by[q.symbol] = by[q.symbol] || {})[q.exchange] = q;
+      if (!q.fresh) return;
+      if (isNum(q.bid) && (bestBid[q.symbol] == null || q.bid > bestBid[q.symbol])) bestBid[q.symbol] = q.bid;
+      if (isNum(q.ask) && (bestAsk[q.symbol] == null || q.ask < bestAsk[q.symbol])) bestAsk[q.symbol] = q.ask;
+    });
+    $("quotes").innerHTML = Object.keys(by).sort().map(function (sym) {
+      return "<tr><td>" + num("<b>" + esc(sym) + "</b>") + "</td>" + exs.map(function (e) {
+        var q = by[sym][e];
+        if (!q) return '<td class="muted">—</td>';
+        var bid = '<span class="' + (q.bid === bestBid[sym] ? "best up" : "") + '">' + price(q.bid) + "</span>";
+        var ask = '<span class="' + (q.ask === bestAsk[sym] ? "best up" : "") + '">' + price(q.ask) + "</span>";
+        var age = q.fresh ? '<span class="muted" style="font-size:11.5px">' + ageText(q.age_ms) + "</span>"
+                          : '<span class="down" style="font-size:11.5px">⚠ قديم ' + ageText(q.age_ms) + "</span>";
+        return "<td>" + num(bid + " / " + ask) + "<br>" + age + "</td>";
+      }).join("") + "</tr>";
+    }).join("");
+  }
+
+  function renderSpreads(s) {
+    var best = {};
+    (s.spreads || []).forEach(function (o) { if (!best[o.symbol] || o.net_pct > best[o.symbol].net_pct) best[o.symbol] = o; });
+    var rows = Object.keys(best).sort().map(function (k) { return best[k]; });
+    if (!rows.length) { $("spreads").innerHTML = '<tr><td colspan="9" class="empty">تحتاج كل عملة سعرين من منصتين على الأقل</td></tr>'; return; }
+    $("spreads").innerHTML = rows.map(function (o) {
+      return '<tr class="' + (o.actionable ? "opp" : "") + '">' +
+        "<td>" + num("<b>" + esc(o.symbol) + "</b>") + "</td>" +
+        "<td>" + exName(o.buy_exchange) + "<br>" + num('<span class="muted">' + price(o.buy_vwap) + "</span>") + "</td>" +
+        "<td>" + exName(o.sell_exchange) + "<br>" + num('<span class="muted">' + price(o.sell_vwap) + "</span>") + "</td>" +
+        '<td class="' + cls(o.gross_pct) + '">' + num(pct(o.gross_pct, true)) + "</td>" +
+        "<td>" + num("−" + o.fees_pct.toFixed(3) + "%") + "</td>" +
+        "<td>" + num("−" + o.withdrawal_pct.toFixed(3) + "%") + "</td>" +
+        "<td>" + num("−" + o.slippage_pct.toFixed(3) + "%") + "</td>" +
+        '<td class="best ' + (o.blocked ? "" : cls(o.net_pct)) + '">' + (o.actionable ? "✓ " : "") + num(pct(o.net_pct, true)) +
+          (o.blocked ? '<br><span class="badge warn" title="' + esc(o.blocked) + '">⛔ غير قابل للتنفيذ</span><br><span class="muted" style="font-size:11.5px;white-space:normal;direction:ltr;display:inline-block;max-width:260px">' + esc(o.blocked) + "</span>" : "") + "</td>" +
+        '<td class="' + cls(o.net_profit_usdt) + '">' + num(money(o.net_profit_usdt, true)) + '<br><span class="muted">على ' + num(money(o.notional)) + "</span></td></tr>";
+    }).join("");
+  }
+
+  function renderOpps(s) {
+    var rows = s.opportunities || [];
+    if (!rows.length) { $("opps").innerHTML = '<tr><td colspan="8" class="empty">لم تُسجَّل فرص بعد. الفرص الحقيقية نادرة بعد خصم كل التكاليف.</td></tr>'; return; }
+    $("opps").innerHTML = rows.map(function (o) {
+      return '<tr class="' + (o.net_pct >= 0 ? "" : "") + '">' +
+        "<td>" + time(o.ts) + "</td><td>" + num("<b>" + esc(o.symbol) + "</b>") + "</td>" +
+        "<td>" + exName(o.buy_exchange) + "</td><td>" + exName(o.sell_exchange) + "</td>" +
+        '<td class="' + cls(o.gross_pct) + '">' + num(pct(o.gross_pct, true)) + "</td>" +
+        '<td class="best ' + cls(o.net_pct) + '">' + num(pct(o.net_pct, true)) + "</td>" +
+        '<td class="' + cls(o.net_profit_usdt) + '">' + num(money(o.net_profit_usdt, true)) + "</td>" +
+        "<td>" + (o.executed ? '<span class="badge good">✓ نعم</span>' : '<span class="badge calm">لا</span>') + "</td></tr>";
+    }).join("");
+  }
+
+  function renderExecs(s) {
+    var rows = s.executions || [];
+    if (!rows.length) { $("execs").innerHTML = '<tr><td colspan="8" class="empty">لا صفقات بعد</td></tr>'; return; }
+    $("execs").innerHTML = rows.map(function (e) {
+      var st = STATUS[e.status] || ["calm", e.status];
+      return "<tr><td>" + time(e.ts) + "</td>" +
+        "<td>" + (e.mode === "live" ? '<span class="badge bad">حقيقي</span>' : '<span class="badge calm">محاكاة</span>') + "</td>" +
+        "<td>" + num("<b>" + esc(e.symbol) + "</b>") + "</td>" +
+        "<td>" + exName(e.buy_exchange) + " ← " + exName(e.sell_exchange) + "</td>" +
+        '<td><span class="badge ' + st[0] + '">' + st[1] + "</span></td>" +
+        "<td>" + num((isNum(e.buy_filled) ? Number(e.buy_filled.toPrecision(6)) : "—") + " / " + (isNum(e.sell_filled) ? Number(e.sell_filled.toPrecision(6)) : "—")) + "</td>" +
+        "<td>" + num(money(e.fees_usdt)) + "</td>" +
+        '<td class="best ' + cls(e.pnl_usdt) + '">' + num(money(e.pnl_usdt, true)) + "</td></tr>";
+    }).join("");
+  }
+
+  function renderBalances(s) {
+    var parts = [];
+    (s.in_flight || []).forEach(function (f) {
+      parts.push('<div class="blockers" style="margin-bottom:8px">⏳ صفقة قيد التنفيذ: ' + num(esc(f.symbol)) + " " + exName(f.buy) + " ← " + exName(f.sell) + "</div>");
+    });
+    (s.exposures || []).forEach(function (x) {
+      parts.push('<div class="banner kill show" style="margin-bottom:8px">⚠ مركز مكشوف: ' + num(esc(x.side) + " " + Number(x.amount.toPrecision(6)) + " " + esc(x.symbol)) + " على " + exName(x.exchange) + " — أغلقه يدوياً.</div>");
+    });
+    $("positions").innerHTML = parts.join("");
+    $("bal-at").textContent = s.balances_at ? "(" + time(s.balances_at) + ")" : "";
+    var names = Object.keys(s.balances || {}).concat(Object.keys(s.balance_errors || {})).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    if (!names.length) { $("balances").innerHTML = '<div class="empty">—</div>'; return; }
+    $("balances").innerHTML = names.map(function (n) {
+      var b = (s.balances || {})[n] || {}, err = (s.balance_errors || {})[n];
+      var assets = Object.keys(b).sort(function (x, y) { return x === "USDT" ? -1 : y === "USDT" ? 1 : x < y ? -1 : 1; });
+      return '<div class="ex"><div class="name">' + exName(n) + "</div>" +
+        (err ? '<div class="err">' + esc(err) + "</div>" : "") +
+        assets.map(function (a) {
+          return '<div style="display:flex;justify-content:space-between;font-size:13px"><span>' + esc(a) + "</span>" + num(Number(b[a].toPrecision(7)).toLocaleString("en-US", { maximumFractionDigits: 8 })) + "</div>";
+        }).join("") + "</div>";
+    }).join("");
+  }
+
+  function renderEvents(s) {
+    var ev = s.events || [];
+    $("events").innerHTML = ev.length ? ev.map(function (e) {
+      var icon = e.level === "error" ? "⛔" : e.level === "warning" ? "⚠" : "•";
+      return '<li><span class="muted" style="flex:none">' + time(e.ts) + "</span><span>" + icon + " " + esc(e.message) + "</span></li>";
+    }).join("") : '<li class="empty">لا أحداث</li>';
+    var c = s.settings;
+    $("settings").innerHTML =
+      "العتبة: " + num(pct(c.min_net_spread_pct)) + " · حجم الصفقة: " + num(money(c.trade_size_usdt)) +
+      " · هامش الانزلاق: " + num(pct(c.slippage_buffer_pct)) + " · رسوم السحب: " + (c.include_withdrawal_fee ? "محسوبة" : "غير محسوبة") +
+      " (موزّعة على دفعة " + num(money(c.rebalance_batch_usdt)) + ")" +
+      " · حد الخسارة اليومي: " + num(money(c.max_daily_loss_usdt)) + "<br>رسوم التداول: " +
+      Object.keys(c.taker_fees).filter(function (k) { return c.exchanges.indexOf(k) >= 0; }).map(function (k) { return exName(k) + " " + num((c.taker_fees[k] * 100).toFixed(3) + "%"); }).join(" · ");
+  }
+
+  function render(s) {
+    S = s;
+    renderHeader(s); renderKpis(s); renderExchanges(s); renderQuotes(s); renderSpreads(s);
+    renderOpps(s); renderExecs(s); renderBalances(s); renderEvents(s);
+  }
+
+  // ---------------- live connection (WebSocket, falls back to fetch) ----------------
+  function setConn(ok, text) { $("conn-dot").className = "dot " + (ok ? "on" : "off"); $("conn-text").textContent = text; }
+  function refresh() { return fetch("/api/state", { cache: "no-store" }).then(function (r) { return r.json(); }).then(render).catch(function () {}); }
+  var retry = 1000;
+  function connect() {
+    var ws;
+    try { ws = new WebSocket((location.protocol === "https:" ? "wss://" : "ws://") + location.host + "/ws"); }
+    catch (e) { setConn(false, "غير متصل"); return setTimeout(connect, retry); }
+    ws.onopen = function () { retry = 1000; setConn(true, "مباشر"); };
+    ws.onmessage = function (m) { try { render(JSON.parse(m.data)); } catch (e) {} };
+    ws.onclose = function () {
+      setConn(false, "انقطع الاتصال بالبوت — إعادة المحاولة");
+      refresh();
+      setTimeout(connect, retry); retry = Math.min(retry * 2, 10000);
+    };
+  }
+  refresh();
+  connect();
+})();
+</script>
+</body>
+</html>

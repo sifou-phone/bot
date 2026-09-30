@@ -1,0 +1,14 @@
+services:
+  tradebot:
+    build: .
+    command: ["paper", "--config", "config.yaml", "--dashboard", "8080", "--host", "0.0.0.0"]
+    # hunter: ["hunt", "--config", "config.yaml", "--dashboard", "8080", "--host", "0.0.0.0"]
+    # real money: add "--yes" and use "live" (or "hunt", "--live")
+    ports:
+      - "127.0.0.1:8080:8080"   # dashboard, reachable from this machine only
+    env_file: .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped

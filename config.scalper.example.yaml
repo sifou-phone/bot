@@ -1,0 +1,72 @@
+# Liquidity-breakout hunter on 1-minute candles.
+# Copy to config.scalper.yaml.  Read-only scan:  python -m tradebot scan -c config.scalper.yaml --watch
+# Paper hunt:  python -m tradebot hunt -c config.scalper.yaml
+symbol: BTC/USDT          # starting symbol only; the hunter switches to whatever breaks out
+timeframe: 1m
+paper_balance: 1000
+history_bars: 1600        # > 1440 so the 24h activity baseline is available
+poll_seconds: 5           # live price check for the stop every 5 seconds
+state_file: data/hunter_state.json
+log_file: logs/hunter.log
+
+exchange:
+  name: binance           # public data via data-api.binance.vision; orders need api.binance.com access
+  market_data_url: auto   # auto = data-api.binance.vision for scan / paper / backtest data
+  sandbox: true
+
+strategy:
+  name: liquidity_breakout
+  params:
+    # support / resistance from swing pivots on 1m
+    pivot_left: 10
+    pivot_right: 3
+    level_lookback: 120
+    # liquidity of each candle
+    vol_period: 20        # rvol = candle volume / average of the last 20 candles
+    flow_period: 10       # buy/sell pressure window (real taker delta on Binance)
+    rvol_min: 3.0         # breakout candle needs >= 3x normal volume
+    clv_min: 0.4          # and must close in the upper part of its range
+    flow_min: 0.2         # buyers in control over the last 10 candles
+    # "exploding" coin filter
+    momentum_bars: 60
+    momentum_min: 0.015   # up >= 1.5% in the last hour
+    activity_window: 1440
+    activity_min: 1.2     # last hour traded >= 1.2x an average hour of the day
+    trend: 50
+    max_extension_atr: 1.5
+    stop_buffer_atr: 0.5  # stop sits 0.5 ATR under the broken resistance
+    # exit when liquidity leaves
+    exit_rvol: 2.5        # heavy selling candle ...
+    exit_clv: -0.5        # ... closing near its low
+    flow_exit: -0.5       # or flow turns to sellers
+    flow_source: candle   # candle = estimate from candle shape (calibrated) | taker = real Binance taker delta
+
+risk:
+  risk_per_trade: 0.005   # a stopped trade loses 0.5% of equity
+  max_stop_pct: 0.015     # strict: the stop is never more than 1.5% below entry
+  min_stop_pct: 0.008     # but not tighter than 0.8% (fees + 1m noise)
+  take_profit_rr: 0       # no fixed target: profit follows liquidity
+  breakeven_rr: 1.0       # at +1R the stop moves to entry + fees
+  trailing_atr_mult: 5.0  # then trails 5 ATR under the close
+  atr_period: 14
+  stop_atr_mult: 2.0
+  max_position_pct: 0.5
+  daily_loss_limit: 0.03  # no new trades after -3% in a day
+  max_drawdown: 0.10      # kill switch at -10% from peak
+  min_notional: 10
+
+costs:
+  fee_rate: 0.001
+  slippage: 0.0005
+
+scanner:
+  quote: USDT
+  universe_size: 30
+  min_quote_volume_24h: 5000000
+  refresh_minutes: 15
+  symbols: []             # e.g. [SOL/USDT, PEPE/USDT] to watch a fixed list
+  max_chase_pct: 0.005
+  watch_distance_pct: 0.005
+
+telegram:
+  enabled: false
