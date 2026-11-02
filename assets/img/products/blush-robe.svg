@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750" width="600" height="750">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#fdf5f7"/><stop offset="1" stop-color="#fbe8ee"/>
+    </radialGradient>
+    <linearGradient id="satin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fae0e7"/><stop offset=".45" stop-color="#f6c6d4"/>
+      <stop offset=".7" stop-color="#fae0e7"/><stop offset="1" stop-color="#b18f99"/>
+    </linearGradient>
+    <linearGradient id="satin2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fae0e7"/><stop offset="1" stop-color="#f6c6d4"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b18f99"/><stop offset="1" stop-color="#b18f99" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="750" fill="url(#bg)"/>
+  <ellipse cx="300" cy="722" rx="200" ry="14" fill="#000" opacity=".08"/>
+  <g fill="#d4af37" opacity=".55">
+    <path d="M520,80 l5,14 14,5 -14,5 -5,14 -5,-14 -14,-5 14,-5z"/>
+    <path d="M80,600 l4,10 10,4 -10,4 -4,10 -4,-10 -10,-4 10,-4z"/>
+  </g>
+
+  <path d="M255,95 L165,125 Q135,135 125,170 L78,388 L152,408 L190,252 L176,696 L424,696 L410,252 L448,408 L522,388 L475,170 Q465,135 435,125 L345,95 Q300,120 255,95 Z"
+        fill="url(#satin)" stroke="#b0476b" stroke-width="3"/>
+  <path d="M78,388 L152,408 M448,408 L522,388" stroke="#b0476b" stroke-width="9"/>
+  <path d="M255,95 L325,400 L300,696" fill="none" stroke="url(#shade)" stroke-width="3" opacity=".5"/>
+  <path d="M255,95 Q262,250 318,392 L338,392 Q282,250 282,100 Z" fill="#b0476b" opacity=".95"/>
+  <path d="M345,95 Q340,240 300,330 L286,316 Q318,230 318,100 Z" fill="#b0476b" opacity=".85"/>
+  <path d="M184,382 L416,382 L416,408 L184,408 Z" fill="url(#satin2)" stroke="#b0476b" stroke-width="2"/>
+  <path d="M322,404 Q312,470 296,540 L318,544 Q330,474 340,406 Z" fill="url(#satin2)" stroke="#b0476b" stroke-width="2"/>
+  <path d="M336,404 Q352,462 372,520 L392,512 Q368,456 350,404 Z" fill="url(#satin2)" stroke="#b0476b" stroke-width="2"/>
+  <ellipse cx="330" cy="395" rx="16" ry="14" fill="url(#satin2)" stroke="#b0476b" stroke-width="2"/>
+  <path d="M182,682 L418,682" stroke="#b0476b" stroke-width="7"/>
+  <path d="M212,170 Q224,420 206,660" stroke="#fff" stroke-width="12" opacity=".2" fill="none" stroke-linecap="round"/>
+  <path d="M380,440 Q392,560 384,670" stroke="#fff" stroke-width="8" opacity=".15" fill="none" stroke-linecap="round"/>
+
+</svg>

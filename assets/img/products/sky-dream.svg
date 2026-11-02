@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750" width="600" height="750">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0" stop-color="#f2f7fc"/><stop offset="1" stop-color="#e3eef8"/>
+    </radialGradient>
+    <linearGradient id="satin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8e7f6"/><stop offset=".45" stop-color="#b9d4ee"/>
+      <stop offset=".7" stop-color="#d8e7f6"/><stop offset="1" stop-color="#8599ab"/>
+    </linearGradient>
+    <linearGradient id="satin2" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d8e7f6"/><stop offset="1" stop-color="#b9d4ee"/>
+    </linearGradient>
+    <linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8599ab"/><stop offset="1" stop-color="#8599ab" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="750" fill="url(#bg)"/>
+  <ellipse cx="300" cy="722" rx="200" ry="14" fill="#000" opacity=".08"/>
+  <g fill="#d4af37" opacity=".55">
+    <path d="M520,80 l5,14 14,5 -14,5 -5,14 -5,-14 -14,-5 14,-5z"/>
+    <path d="M80,600 l4,10 10,4 -10,4 -4,10 -4,-10 -10,-4 10,-4z"/>
+  </g>
+
+  <path d="M205,392 L395,392 L422,702 L330,702 L300,488 L270,702 L178,702 Z" fill="url(#satin)" stroke="#ffffff" stroke-width="3"/>
+  <path d="M180,690 L268,690 M332,690 L420,690" stroke="#ffffff" stroke-width="6" fill="none"/>
+  <path d="M300,410 L300,480" stroke="url(#shade)" stroke-width="4" opacity=".5"/>
+  <path d="M250,110 L170,135 Q140,145 130,180 L100,320 L150,336 L185,222 L190,402 L410,402 L415,222 L450,336 L500,320 L470,180 Q460,145 430,135 L350,110 Q300,150 250,110 Z"
+        fill="url(#satin)" stroke="#ffffff" stroke-width="3"/>
+  <path d="M100,320 L150,336 M450,336 L500,320" stroke="#ffffff" stroke-width="7"/>
+  <path d="M190,394 L410,394" stroke="#ffffff" stroke-width="5"/>
+  <path d="M250,110 L226,150 L268,162 L300,210 Z" fill="url(#satin2)" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M350,110 L374,150 L332,162 L300,210 Z" fill="url(#satin2)" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M300,210 L300,400" stroke="#ffffff" stroke-width="2" opacity=".55"/>
+  <g fill="#ffffff"><circle cx="300" cy="245" r="6"/><circle cx="300" cy="295" r="6"/><circle cx="300" cy="345" r="6"/></g>
+  <path d="M338,226 L384,226 L382,268 L340,268 Z" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <path d="M338,226 L384,226" stroke="#ffffff" stroke-width="6"/>
+  <path d="M205,160 Q215,260 208,380" stroke="#fff" stroke-width="10" opacity=".22" fill="none" stroke-linecap="round"/>
+  <path d="M232,420 Q238,560 224,680" stroke="#fff" stroke-width="9" opacity=".18" fill="none" stroke-linecap="round"/>
+
+</svg>
