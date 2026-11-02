@@ -27,7 +27,7 @@
 1. ادمجي هذا الفرع في `main`.
 2. في المستودع: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
 3. سيعمل ملف `.github/workflows/pages.yml` تلقائياً، ويصبح المتجر متاحاً على:
-   `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/`
+   https://ishakpro.store (النطاق محدد في ملف `CNAME`)
 
 ملاحظة: GitHub Pages المجاني يتطلب أن يكون المستودع **عاماً (Public)** في الحسابات المجانية.
 يمكن أيضاً ربط نطاق خاص (مثل `victoria-dz.com`) من نفس صفحة الإعدادات.

@@ -26,7 +26,7 @@ jobs:
       - name: Prepare site
         run: |
           mkdir -p _site
-          cp -r index.html 404.html manifest.webmanifest .nojekyll assets _site/
+          cp -r index.html 404.html CNAME manifest.webmanifest .nojekyll assets _site/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
