@@ -63,11 +63,6 @@
   }
   const bump = (el) => { if (!el) return; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); };
 
-  const stars = (r) => {
-    const full = Math.round(r);
-    return `<span class="stars" aria-label="${r} من 5">${"★".repeat(full)}<span class="dim">${"★".repeat(5 - full)}</span></span>`;
-  };
-
   /* ---------------- components ---------------- */
   const badgeHTML = (p) => {
     if (p.badge === "sale" || p.oldPrice) return `<span class="badge badge--sale">-${discount(p)}%</span>`;
@@ -88,7 +83,6 @@
       <div class="card__body">
         <span class="card__cat">${catName(p.category)}</span>
         <h3 class="card__title"><a href="#/product/${p.id}">${esc(p.name)}</a></h3>
-        <div class="card__meta">${stars(p.rating)} <small>(${p.reviews})</small></div>
         <div class="card__foot">
           <div class="price">
             <strong>${money(p.price)}</strong>
@@ -114,9 +108,10 @@
 
   /* ---------------- pages ---------------- */
   function pageHome() {
-    const best = PRODUCTS.filter((p) => p.badge === "best" || p.rating >= 4.9).slice(0, 4);
+    const best = [...PRODUCTS].sort((a, b) => (b.badge === "best") - (a.badge === "best")).slice(0, 4);
     const fresh = PRODUCTS.filter((p) => p.badge === "new").slice(0, 4);
     const sale = PRODUCTS.filter((p) => p.oldPrice);
+    const star = PRODUCTS.find((p) => p.id === C.heroProduct) || best[0] || PRODUCTS[0];
     return `
     <section class="hero">
       <div class="hero__glow"></div>
@@ -131,15 +126,15 @@
             <a href="#/shop?cat=robes" class="btn btn--ghost btn--lg">اكتشفي الروبات</a>
           </div>
           <ul class="hero__stats">
-            <li><strong>+2000</strong><span>زبونة سعيدة</span></li>
-            <li><strong>58</strong><span>ولاية نوصل لها</span></li>
-            <li><strong>4.9★</strong><span>تقييم الزبائن</span></li>
+            <li><strong>${C.wilayas.length}</strong><span>ولاية نوصل لها</span></li>
+            <li><strong>عند الاستلام</strong><span>الدفع</span></li>
+            ${C.freeShippingFrom ? `<li><strong>توصيل مجاني</strong><span>للطلبات من ${money(C.freeShippingFrom)}</span></li>` : ""}
           </ul>
         </div>
-        <div class="hero__art">
-          <div class="hero__ring"></div>
-          <img src="assets/img/logo.webp" alt="Victoria Homewear & Pyjamas" width="560" height="560" fetchpriority="high" />
-        </div>
+        <a class="hero__art" href="#/product/${star.id}" aria-label="${esc(star.name)}">
+          <span class="hero__arch"><img src="${star.image}" alt="${esc(star.name)}" width="600" height="750" fetchpriority="high" /></span>
+          <span class="hero__tag"><small>${esc(star.name)}</small><strong>${money(star.price)}</strong></span>
+        </a>
       </div>
     </section>
 
@@ -159,8 +154,8 @@
           const p = PRODUCTS.find((x) => x.category === c.id);
           const n = PRODUCTS.filter((x) => x.category === c.id).length;
           return `<a class="cat reveal" href="#/shop?cat=${c.id}">
-            <img src="${p ? p.image : ""}" alt="" loading="lazy" />
-            <div class="cat__label"><span>${c.icon}</span><strong>${c.name}</strong><small>${n} منتجات</small></div>
+            <span class="cat__img"><img src="${p ? p.image : ""}" alt="" loading="lazy" /></span>
+            <strong>${c.name}</strong><small>${n} منتجات</small>
           </a>`;
         }).join("")}
       </div>
@@ -188,22 +183,6 @@
     <section class="section container">
       ${sectionHead("وصل حديثاً", "New Arrivals", "#/shop?sort=new")}
       ${grid(fresh)}
-    </section>
-
-    <section class="section container">
-      ${sectionHead("آراء زبوناتنا", "Testimonials")}
-      <div class="reviews">
-        ${[
-          ["سارة", "قسنطينة", "القماش ناعم جداً والقصة مثالية، والتوصيل كان سريع. أكيد رح نعاود نطلب!"],
-          ["أمينة", "الجزائر", "الروب العنابي تحفة! جاء مغلف بطريقة راقية كأنها هدية. شكراً Victoria 💗"],
-          ["ليندة", "وهران", "طلبت بيجامة لأختي هدية وعجبتها بزاف. الجودة أحسن من الصور."],
-        ].map(([n, w, t]) => `
-          <figure class="review reveal">
-            ${stars(5)}
-            <blockquote>«${t}»</blockquote>
-            <figcaption><span class="avatar">${n[0]}</span><span><strong>${n}</strong><small>${w}</small></span></figcaption>
-          </figure>`).join("")}
-      </div>
     </section>
 
     <section class="section container">
@@ -237,11 +216,10 @@
     if (size) list = list.filter((p) => p.sizes.some((s) => s.split("/").includes(size)));
     const sorters = {
       featured: () => 0,
-      popular: (a, b) => b.reviews - a.reviews,
+      popular: (a, b) => (b.badge === "best") - (a.badge === "best"),
       new: (a, b) => (b.badge === "new") - (a.badge === "new"),
       "price-asc": (a, b) => a.price - b.price,
       "price-desc": (a, b) => b.price - a.price,
-      rating: (a, b) => b.rating - a.rating,
     };
     list = [...list].sort(sorters[sort] || sorters.featured);
 
@@ -278,7 +256,7 @@
           <label class="select">
             <span>الترتيب</span>
             <select data-param="sort">
-              ${[["featured", "مميز"], ["popular", "الأكثر طلباً"], ["new", "الأحدث"], ["price-asc", "السعر: من الأقل"], ["price-desc", "السعر: من الأعلى"], ["rating", "الأعلى تقييماً"]]
+              ${[["featured", "مميز"], ["popular", "الأكثر طلباً"], ["new", "الأحدث"], ["price-asc", "السعر: من الأقل"], ["price-desc", "السعر: من الأعلى"]]
                 .map(([v, l]) => `<option value="${v}" ${v === sort ? "selected" : ""}>${l}</option>`).join("")}
             </select>
           </label>
@@ -307,7 +285,6 @@
         <div class="product__info">
           <span class="card__cat">${catName(p.category)}</span>
           <h1>${esc(p.name)}</h1>
-          <div class="card__meta">${stars(p.rating)} <small>${p.rating} · ${p.reviews} تقييم</small></div>
           <div class="price price--lg">
             <strong>${money(p.price)}</strong>
             ${p.oldPrice ? `<del>${money(p.oldPrice)}</del><span class="save">وفّري ${money(p.oldPrice - p.price)}</span>` : ""}
