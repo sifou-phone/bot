@@ -15,7 +15,7 @@ window.PRODUCTS = [
   {
     id: "pink-classic", category: "pyjamas", badge: "best",
     name: "بيجامة ساتان وردية كلاسيكية", price: 4900, oldPrice: 5900,
-    image: "assets/img/products/pink-classic.svg", rating: 4.9, reviews: 128,
+    image: "assets/img/products/pink-classic.svg",
     sizes: ["S", "M", "L", "XL", "XXL"], color: "وردي",
     description: "بيجامة من الساتان الناعم بلون وردي أنيق مع حواف سوداء متباينة، قميص بأزرار وجيب صدر وبنطال واسع مريح. مثالية لليالي الهادئة ولحظات الدلال.",
     features: ["ساتان ناعم لامع", "حواف مزخرفة (Piping)", "خصر مطاطي مريح", "قابلة للغسل في الغسالة"],
@@ -23,7 +23,7 @@ window.PRODUCTS = [
   {
     id: "black-royal", category: "pyjamas", badge: "new",
     name: "بيجامة ساتان سوداء ملكية", price: 5200,
-    image: "assets/img/products/black-royal.svg", rating: 4.8, reviews: 76,
+    image: "assets/img/products/black-royal.svg",
     sizes: ["S", "M", "L", "XL", "XXL"], color: "أسود وذهبي",
     description: "فخامة اللون الأسود مع لمسات ذهبية راقية. بيجامة ساتان بقصة كلاسيكية تمنحك إطلالة ملكية حتى في المنزل.",
     features: ["ساتان فاخر", "حواف ذهبية", "قصة مريحة", "هدية مثالية"],
@@ -31,7 +31,7 @@ window.PRODUCTS = [
   {
     id: "champagne", category: "pyjamas",
     name: "بيجامة ساتان شامبانيا", price: 5200,
-    image: "assets/img/products/champagne.svg", rating: 4.7, reviews: 54,
+    image: "assets/img/products/champagne.svg",
     sizes: ["S", "M", "L", "XL"], color: "شامبانيا",
     description: "لون الشامبانيا الدافئ مع لمعة الساتان الحريرية، تصميم ناعم يجمع بين الأناقة والراحة.",
     features: ["ملمس حريري", "قميص بأزرار", "بنطال واسع", "خفيفة الوزن"],
@@ -39,7 +39,7 @@ window.PRODUCTS = [
   {
     id: "navy-night", category: "pyjamas", badge: "sale",
     name: "بيجامة كحلية ليلية", price: 4500, oldPrice: 5600,
-    image: "assets/img/products/navy-night.svg", rating: 4.6, reviews: 41,
+    image: "assets/img/products/navy-night.svg",
     sizes: ["M", "L", "XL", "XXL"], color: "كحلي",
     description: "بيجامة بلون كحلي عميق مع حواف ذهبية فاتحة، تناسب الأمسيات الشتوية بأناقة هادئة.",
     features: ["ساتان سميك", "حواف ذهبية", "جيب صدر", "مقاسات كبيرة متوفرة"],
@@ -47,7 +47,7 @@ window.PRODUCTS = [
   {
     id: "sky-dream", category: "pyjamas",
     name: "بيجامة سماوية حالمة", price: 4900,
-    image: "assets/img/products/sky-dream.svg", rating: 4.8, reviews: 33,
+    image: "assets/img/products/sky-dream.svg",
     sizes: ["S", "M", "L", "XL"], color: "أزرق سماوي",
     description: "لون سماوي هادئ يبعث على الاسترخاء مع حواف بيضاء ناعمة. لأحلام أجمل.",
     features: ["ساتان ناعم", "حواف بيضاء", "قصة كلاسيكية", "مريحة للنوم"],
@@ -55,7 +55,7 @@ window.PRODUCTS = [
   {
     id: "lilac-short", category: "shorts", badge: "new",
     name: "طقم شورت ساتان ليلكي", price: 3900,
-    image: "assets/img/products/lilac-short.svg", rating: 4.9, reviews: 62,
+    image: "assets/img/products/lilac-short.svg",
     sizes: ["S", "M", "L", "XL"], color: "ليلكي",
     description: "طقم صيفي خفيف: قميص بأكمام طويلة وشورت قصير بلون ليلكي ناعم، مثالي للأيام الدافئة.",
     features: ["خفيف ومنعش", "شورت بخصر مطاطي", "حواف بنفسجية", "مثالي للصيف"],
@@ -63,7 +63,7 @@ window.PRODUCTS = [
   {
     id: "mint-short", category: "shorts",
     name: "طقم شورت ساتان نعناعي", price: 3900,
-    image: "assets/img/products/mint-short.svg", rating: 4.7, reviews: 29,
+    image: "assets/img/products/mint-short.svg",
     sizes: ["S", "M", "L", "XL"], color: "أخضر نعناعي",
     description: "انتعاش اللون النعناعي مع نعومة الساتان. طقم شورت مريح لليالي الصيف.",
     features: ["ساتان خفيف", "ألوان منعشة", "قصة مريحة", "سهل العناية"],
@@ -71,7 +71,7 @@ window.PRODUCTS = [
   {
     id: "burgundy-robe", category: "robes", badge: "best",
     name: "روب ساتان طويل عنابي", price: 6500,
-    image: "assets/img/products/burgundy-robe.svg", rating: 5.0, reviews: 88,
+    image: "assets/img/products/burgundy-robe.svg",
     sizes: ["S/M", "L/XL", "XXL"], color: "عنابي",
     description: "روب طويل فاخر بلون عنابي ملكي مع ياقة وحزام بلون ذهبي. لمسة من الفخامة لصباحاتك.",
     features: ["طول كامل", "حزام قابل للربط", "ياقة متباينة", "أكمام واسعة"],
@@ -79,7 +79,7 @@ window.PRODUCTS = [
   {
     id: "blush-robe", category: "robes",
     name: "روب كيمونو وردي ناعم", price: 6200,
-    image: "assets/img/products/blush-robe.svg", rating: 4.8, reviews: 47,
+    image: "assets/img/products/blush-robe.svg",
     sizes: ["S/M", "L/XL", "XXL"], color: "وردي فاتح",
     description: "روب كيمونو بلون وردي فاتح مع ياقة وردية داكنة، أنوثة ورقة في كل تفصيلة.",
     features: ["قصة كيمونو", "حزام", "ساتان لامع", "مثالي للعروس"],
@@ -87,7 +87,7 @@ window.PRODUCTS = [
   {
     id: "ivory-gown", category: "nightgowns", badge: "new",
     name: "قميص نوم حريري عاجي", price: 4500,
-    image: "assets/img/products/ivory-gown.svg", rating: 4.9, reviews: 51,
+    image: "assets/img/products/ivory-gown.svg",
     sizes: ["S", "M", "L", "XL"], color: "عاجي",
     description: "قميص نوم طويل بلون عاجي مع حمالات رفيعة وفيونكة ذهبية وحافة دانتيل. رقة لا تقاوم.",
     features: ["حمالات قابلة للتعديل", "حافة دانتيل", "فيونكة مزخرفة", "قماش انسيابي"],
@@ -95,7 +95,7 @@ window.PRODUCTS = [
   {
     id: "black-lace-gown", category: "nightgowns", badge: "sale",
     name: "قميص نوم أسود بالدانتيل", price: 4200, oldPrice: 4800,
-    image: "assets/img/products/black-lace-gown.svg", rating: 4.8, reviews: 69,
+    image: "assets/img/products/black-lace-gown.svg",
     sizes: ["S", "M", "L", "XL"], color: "أسود",
     description: "قميص نوم أسود أنيق مع تفاصيل وردية ودانتيل عند الحافة. جاذبية راقية.",
     features: ["دانتيل ناعم", "قصة انسيابية", "حمالات رفيعة", "تفاصيل وردية"],
@@ -103,7 +103,7 @@ window.PRODUCTS = [
   {
     id: "rosegold-gown", category: "nightgowns",
     name: "قميص نوم روز جولد", price: 4800,
-    image: "assets/img/products/rosegold-gown.svg", rating: 4.7, reviews: 22,
+    image: "assets/img/products/rosegold-gown.svg",
     sizes: ["S", "M", "L", "XL"], color: "روز جولد",
     description: "لون الروز جولد الساحر مع لمعة الساتان. قطعة تجمع الأنوثة والفخامة.",
     features: ["ساتان لامع", "حافة دانتيل", "فيونكة", "قصة طويلة"],

@@ -63,11 +63,6 @@
   }
   const bump = (el) => { if (!el) return; el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump"); };
 
-  const stars = (r) => {
-    const full = Math.round(r);
-    return `<span class="stars" aria-label="${r} من 5">${"★".repeat(full)}<span class="dim">${"★".repeat(5 - full)}</span></span>`;
-  };
-
   /* ---------------- components ---------------- */
   const badgeHTML = (p) => {
     if (p.badge === "sale" || p.oldPrice) return `<span class="badge badge--sale">-${discount(p)}%</span>`;
@@ -88,7 +83,6 @@
       <div class="card__body">
         <span class="card__cat">${catName(p.category)}</span>
         <h3 class="card__title"><a href="#/product/${p.id}">${esc(p.name)}</a></h3>
-        <div class="card__meta">${stars(p.rating)} <small>(${p.reviews})</small></div>
         <div class="card__foot">
           <div class="price">
             <strong>${money(p.price)}</strong>
@@ -114,7 +108,7 @@
 
   /* ---------------- pages ---------------- */
   function pageHome() {
-    const best = PRODUCTS.filter((p) => p.badge === "best" || p.rating >= 4.9).slice(0, 4);
+    const best = [...PRODUCTS].sort((a, b) => (b.badge === "best") - (a.badge === "best")).slice(0, 4);
     const fresh = PRODUCTS.filter((p) => p.badge === "new").slice(0, 4);
     const sale = PRODUCTS.filter((p) => p.oldPrice);
     const star = PRODUCTS.find((p) => p.id === C.heroProduct) || best[0] || PRODUCTS[0];
@@ -222,11 +216,10 @@
     if (size) list = list.filter((p) => p.sizes.some((s) => s.split("/").includes(size)));
     const sorters = {
       featured: () => 0,
-      popular: (a, b) => b.reviews - a.reviews,
+      popular: (a, b) => (b.badge === "best") - (a.badge === "best"),
       new: (a, b) => (b.badge === "new") - (a.badge === "new"),
       "price-asc": (a, b) => a.price - b.price,
       "price-desc": (a, b) => b.price - a.price,
-      rating: (a, b) => b.rating - a.rating,
     };
     list = [...list].sort(sorters[sort] || sorters.featured);
 
@@ -263,7 +256,7 @@
           <label class="select">
             <span>الترتيب</span>
             <select data-param="sort">
-              ${[["featured", "مميز"], ["popular", "الأكثر طلباً"], ["new", "الأحدث"], ["price-asc", "السعر: من الأقل"], ["price-desc", "السعر: من الأعلى"], ["rating", "الأعلى تقييماً"]]
+              ${[["featured", "مميز"], ["popular", "الأكثر طلباً"], ["new", "الأحدث"], ["price-asc", "السعر: من الأقل"], ["price-desc", "السعر: من الأعلى"]]
                 .map(([v, l]) => `<option value="${v}" ${v === sort ? "selected" : ""}>${l}</option>`).join("")}
             </select>
           </label>
@@ -292,7 +285,6 @@
         <div class="product__info">
           <span class="card__cat">${catName(p.category)}</span>
           <h1>${esc(p.name)}</h1>
-          <div class="card__meta">${stars(p.rating)} <small>${p.rating} · ${p.reviews} تقييم</small></div>
           <div class="price price--lg">
             <strong>${money(p.price)}</strong>
             ${p.oldPrice ? `<del>${money(p.oldPrice)}</del><span class="save">وفّري ${money(p.oldPrice - p.price)}</span>` : ""}
