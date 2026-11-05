@@ -34,7 +34,10 @@
 
   const cartLines = () =>
     cart.map((l) => ({ ...l, product: byId(l.id) })).filter((l) => l.product);
-  const subtotal = () => cartLines().reduce((s, l) => s + l.product.price * l.qty, 0);
+  const sumLines = (lines) => lines.reduce((s, l) => s + l.product.price * l.qty, 0);
+  const subtotal = () => sumLines(cartLines());
+  // What the checkout page is ordering: one product bought directly, or the cart.
+  let checkout = { lines: [], direct: false };
   const cartQty = () => cart.reduce((s, l) => s + l.qty, 0);
 
   function addToCart(id, size, qty = 1) {
@@ -303,17 +306,21 @@
               <input type="number" value="1" min="1" max="20" aria-label="الكمية" />
               <button data-q="-1" aria-label="إنقاص">−</button>
             </div>
-            <button class="btn btn--gold btn--lg grow" id="addBtn">أضيفي إلى السلة</button>
+            <button class="btn btn--gold btn--lg grow" id="buyNow">اطلبي الآن · الدفع عند الاستلام</button>
             <button class="wish wish--lg ${wish.includes(p.id) ? "on" : ""}" data-wish="${p.id}" aria-label="المفضلة">
               <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-9.2-9A5 5 0 0 1 12 6a5 5 0 0 1 9.2 5C19 15.6 12 20 12 20z"/></svg>
             </button>
           </div>
-          <button class="btn btn--dark btn--lg btn--block" id="buyNow">اطلبي الآن — الدفع عند الاستلام</button>
+          <button class="btn btn--ghost btn--block" id="addBtn">أضيفي إلى السلة لطلب عدة قطع</button>
+          <div class="sticky-buy" id="stickyBuy">
+            <div><small>${esc(p.name)}</small><strong>${money(p.price)}</strong></div>
+            <button class="btn btn--gold" type="button" data-buy-now>اطلبي الآن</button>
+          </div>
           <ul class="product__features">
             ${p.features.map((f) => `<li>✦ ${esc(f)}</li>`).join("")}
           </ul>
           <div class="assure">
-            <div>🚚 <span>توصيل خلال 24–72 ساعة</span></div>
+            <div>🚚 <span>توصيل لـ ${C.wilayas.length} ولاية</span></div>
             <div>💵 <span>ادفعي عند الاستلام</span></div>
             <div>🔄 <span>استبدال خلال 7 أيام</span></div>
           </div>
@@ -339,15 +346,23 @@
     }</section>`;
   }
 
-  function shippingFor(wilayaId, type) {
+  // null = no wilaya chosen (or no office there), 0 = free.
+  function shippingFor(wilayaId, type, sub = subtotal()) {
     const w = C.wilayas.find((x) => x[0] === +wilayaId);
     if (!w) return null;
-    if (C.freeShippingFrom && subtotal() >= C.freeShippingFrom) return 0;
-    return C.shippingZones[w[2]][type === "desk" ? 1 : 0];
+    const price = type === "desk" ? w[3] : w[2];
+    if (price == null) return null;
+    if (C.freeShippingFrom && sub >= C.freeShippingFrom) return 0;
+    return price;
   }
 
-  function pageCheckout() {
-    const lines = cartLines();
+  function pageCheckout(params) {
+    const buy = byId(params.get("buy"));
+    const lines = buy
+      ? [{ id: buy.id, product: buy, size: buy.sizes.includes(params.get("size")) ? params.get("size") : buy.sizes[0],
+           qty: Math.max(1, Math.min(20, parseInt(params.get("qty"), 10) || 1)) }]
+      : cartLines();
+    checkout = { lines, direct: !!buy };
     if (!lines.length) {
       return `<section class="container narrow"><div class="empty">
         <p>سلتك فارغة حالياً 🛍️</p><a class="btn btn--gold" href="#/shop">ابدئي التسوق</a></div></section>`;
@@ -402,11 +417,11 @@
             </li>`).join("")}
         </ul>
         <div class="totals">
-          <div><span>المجموع الفرعي</span><span>${money(subtotal())}</span></div>
+          <div><span>المجموع الفرعي</span><span>${money(sumLines(lines))}</span></div>
           <div><span>التوصيل</span><span id="shipCost">—</span></div>
-          <div class="grand"><span>الإجمالي</span><span id="grandTotal">${money(subtotal())}</span></div>
+          <div class="grand"><span>الإجمالي</span><span id="grandTotal">${money(sumLines(lines))}</span></div>
         </div>
-        ${freeShipBar()}
+        ${freeShipBar(sumLines(lines))}
       </aside>
     </section>`;
   }
@@ -456,15 +471,15 @@
     shipping: ["التوصيل والدفع", `
       <p>نوصل طلباتك إلى <strong>كل الولايات</strong> عبر شركات توصيل موثوقة، إلى المنزل أو إلى مكتب شركة التوصيل.</p>
       <ul>
-        <li>مدة التوصيل: من 24 إلى 72 ساعة حسب الولاية.</li>
+        <li>نوصل إلى ${C.wilayas.length} ولاية، ومدة التوصيل تختلف حسب الولاية ونخبرك بها عند تأكيد الطلب.</li>
         <li>الدفع نقداً <strong>عند الاستلام</strong> — لا حاجة لأي دفع مسبق.</li>
         <li>يمكنك معاينة الطرد قبل الدفع.</li>
         <li>التوصيل مجاني للطلبات التي تفوق ${money(C.freeShippingFrom)}.</li>
       </ul>
       <h3>أسعار التوصيل</h3>
-      <table class="table"><thead><tr><th>المنطقة</th><th>للمنزل</th><th>للمكتب</th></tr></thead><tbody>
-      ${Object.entries(C.shippingZones).map(([z, [h, d]]) => `<tr><td>${["", "الوسط", "الشمال والهضاب", "الجنوب", "الجنوب الكبير"][z] || z}</td><td>${money(h)}</td><td>${money(d)}</td></tr>`).join("")}
-      </tbody></table>`],
+      <div class="table-wrap"><table class="table"><thead><tr><th>الولاية</th><th>للمنزل</th><th>للمكتب</th></tr></thead><tbody>
+      ${C.wilayas.map(([n, name, h, d]) => `<tr><td>${String(n).padStart(2, "0")} - ${name}</td><td>${money(h)}</td><td>${d == null ? "—" : money(d)}</td></tr>`).join("")}
+      </tbody></table></div>`],
     returns: ["الاستبدال والإرجاع", `
       <p>رضاكِ يهمنا! يمكنك استبدال المنتج خلال <strong>7 أيام</strong> من تاريخ الاستلام بشرط:</p>
       <ul>
@@ -500,9 +515,8 @@
     </div></section>`;
 
   /* ---------------- cart drawer ---------------- */
-  function freeShipBar() {
+  function freeShipBar(s = subtotal()) {
     if (!C.freeShippingFrom) return "";
-    const s = subtotal();
     const pct = Math.min(100, (s / C.freeShippingFrom) * 100);
     const msg = s >= C.freeShippingFrom
       ? "🎉 مبروك! حصلتِ على التوصيل المجاني"
@@ -594,15 +608,20 @@
   function bindCheckout() {
     const form = $("#checkoutForm");
     if (!form) return;
+    const sub = sumLines(checkout.lines);
     const update = () => {
       const wil = form.wilaya.value;
-      const type = form.delivery.value;
-      const home = shippingFor(wil, "home"), desk = shippingFor(wil, "desk");
-      $("#homePrice").textContent = home == null ? "اختاري الولاية" : home ? money(home) : "مجاني";
-      $("#deskPrice").textContent = desk == null ? "اختاري الولاية" : desk ? money(desk) : "مجاني";
-      const ship = shippingFor(wil, type);
+      const home = shippingFor(wil, "home", sub), desk = shippingFor(wil, "desk", sub);
+      const noDesk = !!wil && desk == null;
+      const deskRadio = form.querySelector('input[name="delivery"][value="desk"]');
+      deskRadio.disabled = noDesk;
+      if (noDesk && deskRadio.checked) form.querySelector('input[name="delivery"][value="home"]').checked = true;
+      const label = (v) => (!wil ? "اختاري الولاية" : v == null ? "لا يوجد مكتب في هذه الولاية" : v ? money(v) : "مجاني");
+      $("#homePrice").textContent = label(home);
+      $("#deskPrice").textContent = label(desk);
+      const ship = shippingFor(wil, form.delivery.value, sub);
       $("#shipCost").textContent = ship == null ? "—" : ship ? money(ship) : "مجاني";
-      $("#grandTotal").textContent = money(subtotal() + (ship || 0));
+      $("#grandTotal").textContent = money(sub + (ship || 0));
     };
     form.addEventListener("change", update);
 
@@ -631,14 +650,14 @@
       const btn = $("#submitOrder");
       btn.disabled = true; btn.textContent = "جارٍ الإرسال...";
 
-      const shipping = shippingFor(d.wilaya, d.delivery) || 0;
+      const shipping = shippingFor(d.wilaya, d.delivery, sub) || 0;
       const order = {
         id: "VIC-" + Date.now().toString(36).toUpperCase().slice(-6),
         date: new Date().toISOString(),
-        items: cartLines().map((l) => ({ id: l.id, name: l.product.name, size: l.size, qty: l.qty, price: l.product.price })),
-        subtotal: subtotal(),
+        items: checkout.lines.map((l) => ({ id: l.id, name: l.product.name, size: l.size, qty: l.qty, price: l.product.price })),
+        subtotal: sub,
         shipping,
-        total: subtotal() + shipping,
+        total: sub + shipping,
         customer: {
           name: d.name.trim(), phone: normalizePhone(d.phone),
           wilaya: +d.wilaya, wilayaName: C.wilayas.find((w) => w[0] === +d.wilaya)[1],
@@ -663,8 +682,7 @@
       const orders = store.get("orders", []);
       orders.push(order);
       store.set("orders", orders);
-      cart = [];
-      saveCart();
+      if (!checkout.direct) { cart = []; saveCart(); }
       if (!wa) toast("اضغطي «إرسال الطلب عبر واتساب» لتأكيد طلبك");
       location.hash = `#/success/${order.id}`;
     });
@@ -688,11 +706,19 @@
     });
     const need = () => { if (!getSize()) { toast("يرجى اختيار المقاس"); return false; } return true; };
     $("#addBtn").addEventListener("click", () => { if (need()) addToCart(p.id, getSize(), getQty()); });
-    $("#buyNow").addEventListener("click", () => {
+    const buyNow = () => {
       if (!need()) return;
-      addToCart(p.id, getSize(), getQty());
-      location.hash = "#/checkout";
-    });
+      const q = new URLSearchParams({ buy: p.id, size: getSize(), qty: getQty() });
+      location.hash = `#/checkout?${q}`;
+    };
+    $("#buyNow").addEventListener("click", buyNow);
+    $("[data-buy-now]").addEventListener("click", buyNow);
+    // Show the bottom order bar once the main order button scrolls out of view.
+    const bar = $("#stickyBuy");
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(([e]) => bar.classList.toggle("show", !e.isIntersecting && e.boundingClientRect.top < 0))
+        .observe($("#buyNow"));
+    }
     const z = $("#zoom"), img = $("#zoom img");
     z.addEventListener("mousemove", (e) => {
       const r = z.getBoundingClientRect();
@@ -719,7 +745,7 @@
       case undefined: html = pageHome(); break;
       case "shop": html = pageShop(params); break;
       case "product": html = pageProduct(arg); break;
-      case "checkout": html = pageCheckout(); break;
+      case "checkout": html = pageCheckout(params); break;
       case "wishlist": html = pageWishlist(); break;
       case "success": html = pageSuccess(arg); break;
       case "track": html = pageTrack(); break;

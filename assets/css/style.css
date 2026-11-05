@@ -482,6 +482,26 @@ h1, h2, h3 { line-height: 1.3; margin: 0 0 .5em; }
 .card.reveal.in:hover { transform: translateY(-6px); }
 
 /* ---------- responsive ---------- */
+/* ---------- product: bottom order bar (phones) ---------- */
+.sticky-buy { display: none; }
+@media (max-width: 900px) {
+  .sticky-buy {
+    position: fixed; z-index: 40; inset: auto 0 0 0; display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(14, 10, 12, .94); border-top: 1px solid var(--line);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transform: translateY(110%); transition: transform .3s ease;
+  }
+  .sticky-buy.show { transform: none; }
+  .sticky-buy > div { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+  .sticky-buy small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sticky-buy strong { color: var(--gold-1); }
+}
+.radio:has(input:disabled) { opacity: .5; }
+body:has(.sticky-buy.show) .wa-float { bottom: 84px; }
+.table-wrap { max-height: 480px; overflow: auto; margin: 16px 0; border-radius: 14px; }
+.table-wrap .table { margin: 0; }
+
 @media (max-width: 1024px) {
   .grid { grid-template-columns: repeat(3, 1fr); }
   .footer__grid { grid-template-columns: 1fr 1fr; }
