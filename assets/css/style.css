@@ -200,18 +200,20 @@ h1, h2, h3 { line-height: 1.3; margin: 0 0 .5em; }
 .hero__stats li { display: flex; flex-direction: column; }
 .hero__stats strong { font-size: 1.6rem; font-weight: 800; color: var(--gold-1); line-height: 1.2; }
 .hero__stats span { color: var(--muted); font-size: .88rem; }
-.hero__art { position: relative; display: grid; place-items: center; }
-.hero__art img {
-  position: relative; z-index: 1; width: min(520px, 100%);
-  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, .6)) drop-shadow(0 0 40px rgba(242, 167, 195, .18));
-  animation: float 6s ease-in-out infinite;
+.hero__art { position: relative; display: block; justify-self: center; width: min(440px, 100%); }
+.hero__arch {
+  display: block; aspect-ratio: 4 / 5; border-radius: 999px 999px var(--radius) var(--radius); overflow: hidden;
+  padding: 6px; background: var(--gold-grad); box-shadow: var(--shadow), 0 0 60px rgba(242, 167, 195, .12);
 }
-.hero__ring {
-  position: absolute; width: 92%; aspect-ratio: 1; border-radius: 50%;
-  border: 1px dashed rgba(212, 175, 55, .35); animation: spin 60s linear infinite;
+.hero__arch img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; background: var(--surface-2); transition: transform .8s ease; }
+.hero__art:hover .hero__arch img { transform: scale(1.04); }
+.hero__tag {
+  position: absolute; inset-inline-start: -18px; bottom: 28px; display: flex; flex-direction: column; line-height: 1.35;
+  padding: 10px 16px; border-radius: 14px; background: rgba(14, 10, 12, .82); border: 1px solid var(--line);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); max-width: 70%;
 }
-@keyframes float { 50% { transform: translateY(-14px); } }
-@keyframes spin { to { transform: rotate(360deg); } }
+.hero__tag small { color: var(--muted); font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hero__tag strong { color: var(--gold-1); font-size: 1.15rem; }
 
 /* ---------- perks ---------- */
 .perks { border-block: 1px solid var(--line); background: var(--bg-2); }
@@ -229,17 +231,16 @@ h1, h2, h3 { line-height: 1.3; margin: 0 0 .5em; }
 
 /* ---------- categories ---------- */
 .cats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-.cat {
-  position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 5;
-  border: 1px solid var(--line-soft); isolation: isolate;
+.cat { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; }
+.cat__img {
+  display: block; width: min(170px, 100%); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+  padding: 4px; background: var(--gold-grad); margin-bottom: 10px; transition: box-shadow .3s ease;
 }
-.cat img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
-.cat::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(14, 10, 12, .92), transparent 55%); }
-.cat:hover img { transform: scale(1.07); }
-.cat__label { position: absolute; z-index: 1; inset: auto 0 0 0; padding: 18px; display: flex; flex-direction: column; }
-.cat__label span { font-size: 1.4rem; }
-.cat__label strong { font-size: 1.25rem; }
-.cat__label small { color: var(--gold-1); }
+.cat__img img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; background: var(--surface-2); transition: transform .6s ease; }
+.cat:hover .cat__img { box-shadow: 0 0 0 6px var(--pink-soft); }
+.cat:hover .cat__img img { transform: scale(1.07); }
+.cat strong { font-size: 1.1rem; }
+.cat small { color: var(--muted); font-size: .85rem; }
 
 /* ---------- product grid & card ---------- */
 .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
@@ -302,14 +303,6 @@ h1, h2, h3 { line-height: 1.3; margin: 0 0 .5em; }
 .promo__imgs a:nth-child(2) { transform: translateY(26px); }
 .promo__imgs span { position: absolute; top: 10px; right: 10px; background: var(--pink); color: #1a0d12; font-weight: 800; padding: 2px 10px; border-radius: 99px; }
 
-/* ---------- reviews ---------- */
-.reviews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.review { margin: 0; padding: 26px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line-soft); position: relative; }
-.review::before { content: "”"; position: absolute; top: -6px; left: 20px; font-family: var(--serif); font-size: 5rem; color: rgba(212, 175, 55, .18); line-height: 1; }
-.review blockquote { margin: 12px 0 18px; font-size: 1.02rem; }
-.review figcaption { display: flex; align-items: center; gap: 12px; }
-.review figcaption span:last-child { display: flex; flex-direction: column; line-height: 1.3; }
-.review small { color: var(--muted); }
 .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-grad); color: #1a1206; font-weight: 800; font-size: 1.1rem; }
 
 /* ---------- insta ---------- */
@@ -515,17 +508,18 @@ h1, h2, h3 { line-height: 1.3; margin: 0 0 .5em; }
   .header__actions { margin-inline-start: 0; }
   .hero { padding: 20px 0 50px; }
   .hero__inner { grid-template-columns: 1fr; text-align: center; }
-  .hero__art { order: -1; }
-  .hero__art img { width: min(340px, 80%); }
+  .hero__art { order: -1; width: min(320px, 78%); }
+  .hero__tag { inset-inline-start: -10px; bottom: 18px; text-align: start; }
   .hero__script { text-align: center; }
   .hero__lead { margin-inline: auto; }
   .hero__cta, .hero__stats { justify-content: center; }
   .perks__grid { grid-template-columns: 1fr 1fr; }
   .perk:nth-child(3) { border-inline-start: 0; }
   .perk:nth-child(n+3) { border-top: 1px solid var(--line-soft); }
-  .cats { grid-template-columns: 1fr 1fr; }
+  .cats { grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .cat strong { font-size: .92rem; }
+  .cat small { font-size: .75rem; }
   .promo__inner { grid-template-columns: 1fr; padding: 30px; }
-  .reviews { grid-template-columns: 1fr; }
   .product__grid, .checkout { grid-template-columns: 1fr; gap: 26px; }
   .product__gallery, .summary { position: static; }
   .summary { order: -1; }

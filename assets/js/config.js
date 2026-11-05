@@ -5,6 +5,7 @@ window.STORE_CONFIG = {
   name: "Victoria",
   tagline: "Homewear & Pyjamas",
   slogan: "Elegance in Every Moment",
+  heroProduct: "black-royal", // معرّف المنتج الذي يظهر في واجهة الصفحة الرئيسية (فارغ = الأكثر مبيعاً)
 
   // رقم واتساب لاستقبال الطلبات بالصيغة الدولية بدون + أو 00 (مثال: 213555123456)
   whatsapp: "213555000000",

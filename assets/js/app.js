@@ -117,6 +117,7 @@
     const best = PRODUCTS.filter((p) => p.badge === "best" || p.rating >= 4.9).slice(0, 4);
     const fresh = PRODUCTS.filter((p) => p.badge === "new").slice(0, 4);
     const sale = PRODUCTS.filter((p) => p.oldPrice);
+    const star = PRODUCTS.find((p) => p.id === C.heroProduct) || best[0] || PRODUCTS[0];
     return `
     <section class="hero">
       <div class="hero__glow"></div>
@@ -131,15 +132,15 @@
             <a href="#/shop?cat=robes" class="btn btn--ghost btn--lg">اكتشفي الروبات</a>
           </div>
           <ul class="hero__stats">
-            <li><strong>+2000</strong><span>زبونة سعيدة</span></li>
-            <li><strong>58</strong><span>ولاية نوصل لها</span></li>
-            <li><strong>4.9★</strong><span>تقييم الزبائن</span></li>
+            <li><strong>${C.wilayas.length}</strong><span>ولاية نوصل لها</span></li>
+            <li><strong>عند الاستلام</strong><span>الدفع</span></li>
+            ${C.freeShippingFrom ? `<li><strong>توصيل مجاني</strong><span>للطلبات من ${money(C.freeShippingFrom)}</span></li>` : ""}
           </ul>
         </div>
-        <div class="hero__art">
-          <div class="hero__ring"></div>
-          <img src="assets/img/logo.webp" alt="Victoria Homewear & Pyjamas" width="560" height="560" fetchpriority="high" />
-        </div>
+        <a class="hero__art" href="#/product/${star.id}" aria-label="${esc(star.name)}">
+          <span class="hero__arch"><img src="${star.image}" alt="${esc(star.name)}" width="600" height="750" fetchpriority="high" /></span>
+          <span class="hero__tag"><small>${esc(star.name)}</small><strong>${money(star.price)}</strong></span>
+        </a>
       </div>
     </section>
 
@@ -159,8 +160,8 @@
           const p = PRODUCTS.find((x) => x.category === c.id);
           const n = PRODUCTS.filter((x) => x.category === c.id).length;
           return `<a class="cat reveal" href="#/shop?cat=${c.id}">
-            <img src="${p ? p.image : ""}" alt="" loading="lazy" />
-            <div class="cat__label"><span>${c.icon}</span><strong>${c.name}</strong><small>${n} منتجات</small></div>
+            <span class="cat__img"><img src="${p ? p.image : ""}" alt="" loading="lazy" /></span>
+            <strong>${c.name}</strong><small>${n} منتجات</small>
           </a>`;
         }).join("")}
       </div>
@@ -188,22 +189,6 @@
     <section class="section container">
       ${sectionHead("وصل حديثاً", "New Arrivals", "#/shop?sort=new")}
       ${grid(fresh)}
-    </section>
-
-    <section class="section container">
-      ${sectionHead("آراء زبوناتنا", "Testimonials")}
-      <div class="reviews">
-        ${[
-          ["سارة", "قسنطينة", "القماش ناعم جداً والقصة مثالية، والتوصيل كان سريع. أكيد رح نعاود نطلب!"],
-          ["أمينة", "الجزائر", "الروب العنابي تحفة! جاء مغلف بطريقة راقية كأنها هدية. شكراً Victoria 💗"],
-          ["ليندة", "وهران", "طلبت بيجامة لأختي هدية وعجبتها بزاف. الجودة أحسن من الصور."],
-        ].map(([n, w, t]) => `
-          <figure class="review reveal">
-            ${stars(5)}
-            <blockquote>«${t}»</blockquote>
-            <figcaption><span class="avatar">${n[0]}</span><span><strong>${n}</strong><small>${w}</small></span></figcaption>
-          </figure>`).join("")}
-      </div>
     </section>
 
     <section class="section container">
